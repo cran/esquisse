@@ -49,7 +49,7 @@ chartControlsUI <- function(id) {
     tags$script("$('.sw-dropdown').addClass('btn-group-charter');"),
     tags$script(HTML("$('.sw-dropdown > .btn').addClass('btn-charter');")),
     tags$script("$('#sw-content-filterdrop').click(function (e) {e.stopPropagation();});"),
-    toggleDisplayUi()
+    useShinyUtils()
   )
 }
 
@@ -74,44 +74,44 @@ chartControlsServer <- function(input, output, session, type, data = NULL) {
 
   observeEvent(type$palette, {
     if (isTRUE(type$palette)) {
-      toggleDisplayServer(session = session, id = ns("controls-palette"), display = "block")
-      toggleDisplayServer(session = session, id = ns("controls-spectrum"), display = "none")
+      toggleDisplay(session = session, id = ns("controls-palette"), display = "block")
+      toggleDisplay(session = session, id = ns("controls-spectrum"), display = "none")
     } else {
-      toggleDisplayServer(session = session, id = ns("controls-palette"), display = "none")
-      toggleDisplayServer(session = session, id = ns("controls-spectrum"), display = "block")
+      toggleDisplay(session = session, id = ns("controls-palette"), display = "none")
+      toggleDisplay(session = session, id = ns("controls-spectrum"), display = "block")
     }
   })
   
   observeEvent(type$x, {
     if (type$x %in% "bar") {
-      toggleDisplayServer(session = session, id = ns("controls-discrete"), display = "block")
+      toggleDisplay(session = session, id = ns("controls-discrete"), display = "block")
     } else {
-      toggleDisplayServer(session = session, id = ns("controls-discrete"), display = "none")
+      toggleDisplay(session = session, id = ns("controls-discrete"), display = "none")
     }
     if (type$x %in% "histogram") {
-      toggleDisplayServer(session = session, id = ns("controls-histogram"), display = "block")
+      toggleDisplay(session = session, id = ns("controls-histogram"), display = "block")
     } else {
-      toggleDisplayServer(session = session, id = ns("controls-histogram"), display = "none")
+      toggleDisplay(session = session, id = ns("controls-histogram"), display = "none")
     }
     if (type$x %in% c("density", "violin")) {
-      toggleDisplayServer(session = session, id = ns("controls-density"), display = "block")
+      toggleDisplay(session = session, id = ns("controls-density"), display = "block")
     } else {
-      toggleDisplayServer(session = session, id = ns("controls-density"), display = "none")
+      toggleDisplay(session = session, id = ns("controls-density"), display = "none")
     }
     if (type$x %in% "point") {
-      toggleDisplayServer(session = session, id = ns("controls-scatter"), display = "block")
+      toggleDisplay(session = session, id = ns("controls-scatter"), display = "block")
     } else {
-      toggleDisplayServer(session = session, id = ns("controls-scatter"), display = "none")
+      toggleDisplay(session = session, id = ns("controls-scatter"), display = "none")
     }
     if (type$x %in% c("point", "line")) {
-      toggleDisplayServer(session = session, id = ns("controls-size"), display = "block")
+      toggleDisplay(session = session, id = ns("controls-size"), display = "block")
     } else {
-      toggleDisplayServer(session = session, id = ns("controls-size"), display = "none")
+      toggleDisplay(session = session, id = ns("controls-size"), display = "none")
     }
     if (type$x %in% "violin") {
-      toggleDisplayServer(session = session, id = ns("controls-violin"), display = "block")
+      toggleDisplay(session = session, id = ns("controls-violin"), display = "block")
     } else {
-      toggleDisplayServer(session = session, id = ns("controls-violin"), display = "none")
+      toggleDisplay(session = session, id = ns("controls-violin"), display = "none")
     }
   })
   
@@ -121,11 +121,26 @@ chartControlsServer <- function(input, output, session, type, data = NULL) {
     width = "95%"
   )
 
-  outin <- reactiveValues(inputs = NULL)
+  outin <- reactiveValues(inputs = NULL, export_ppt = NULL, export_png = NULL)
+  
+  observeEvent(input$export_ppt, {
+    outin$export_ppt <- input$export_ppt
+  }, ignoreInit = TRUE)
+  observeEvent(input$export_png, {
+    outin$export_png <- input$export_png
+  }, ignoreInit = TRUE)
 
-  observeEvent(reactiveValuesToList(input), {
-    outin$inputs <- reactiveValuesToList(input)
+  observeEvent({
+    all_inputs <- reactiveValuesToList(input)
+    all_inputs[grep(pattern = "filter-data", x = names(all_inputs), invert = TRUE)]
+  }, {
+    all_inputs <- reactiveValuesToList(input)
+    # remove inputs from filterDataServer module with ID "filter-data"
+    nofilter_inputs <- all_inputs[grep(pattern = "filter-data", x = names(all_inputs), invert = TRUE)]
+    nofilter_inputs <- nofilter_inputs[order(names(nofilter_inputs))]
+    outin$inputs <- nofilter_inputs
   })
+  
   observeEvent(res_data$data, {
     outin$data <- res_data$data
     outin$code <- res_data$code
@@ -279,7 +294,7 @@ controls_appearance <- function(ns) {
         icon("arrow-down"), icon("arrow-right"), icon("close")
       ),
       choiceValues = c("left", "top", "bottom", "right", "none"),
-      selected = "right", justified = TRUE
+      selected = "right", justified = TRUE, size = "sm"
     )
   )
 }
@@ -303,7 +318,7 @@ controls_params <- function(ns) {
       id = ns("controls-scatter"), style = "display: none; padding-top: 10px;",
       materialSwitch(
         inputId = ns("smooth_add"), 
-        label = "Smooth line",
+        label = "Smooth line:",
         right = TRUE, 
         status = "primary"
       ),
@@ -330,7 +345,7 @@ controls_params <- function(ns) {
       id = ns("controls-histogram"), style = "display: none;",
       sliderInput(
         inputId = ns("bins"), 
-        label = "Numbers of bins", 
+        label = "Numbers of bins:", 
         min = 10, max = 100,
         value = 30
       )
@@ -340,14 +355,14 @@ controls_params <- function(ns) {
       prettyRadioButtons(
         inputId = ns("scale"), label = "Scale:", inline = TRUE,
         status = "primary", choices = c("area", "count", "width"),
-        fill = TRUE
+        outline = TRUE, icon = icon("check")
       )
     ),
     tags$div(
       id = ns("controls-density"), style = "display: none;",
       sliderInput(
         inputId = ns("adjust"), 
-        label = "Bandwidth adjustment", 
+        label = "Bandwidth adjustment:", 
         min = 0.2, max = 6, 
         value = 1, step = 0.1
       )
@@ -357,11 +372,12 @@ controls_params <- function(ns) {
       prettyRadioButtons(
         inputId = ns("position"), label = "Position:",
         choices = c("stack", "dodge", "fill"), inline = TRUE,
-        selected = "stack", status = "primary", fill = TRUE
+        selected = "stack", status = "primary",
+        outline = TRUE, icon = icon("check")
       ),
       materialSwitch(
         inputId = ns("flip"), 
-        label = "Flip coordinates", 
+        label = "Flip coordinates:", 
         value = FALSE, 
         status = "primary"
       )
@@ -383,7 +399,7 @@ controls_params <- function(ns) {
 #'
 controls_code <- function(ns) {
   tagList(
-    moduleCodeUI(id = "code"),
+    moduleCodeUI(id = ns("code")),
     tags$br(),
     tags$b("Export:"),
     actionGroupButtons(

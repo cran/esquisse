@@ -21,7 +21,7 @@
 #'
 #' ggplot_to_ppt()
 #'
-#' }
+#' 
 #'
 #' # Or with an object's name
 #' library(ggplot2)
@@ -29,6 +29,8 @@
 #'   geom_point(aes(Sepal.Length, Sepal.Width))
 #'
 #' ggplot_to_ppt("p")
+#' 
+#' }
 #'
 ggplot_to_ppt <- function(gg = NULL) {
   
@@ -75,7 +77,7 @@ ggplot_to_ppt <- function(gg = NULL) {
   } else {
 
     ui <- miniPage(
-      toggleBtnUi(),
+      useShinyUtils(),
       miniContentPanel(
         prettyCheckboxGroup(
           inputId = "select_gg", 
@@ -87,7 +89,6 @@ ggplot_to_ppt <- function(gg = NULL) {
           id = "ppt-pb", style = "display: none;",
           progressBar(id = "progress-ppt", value = 0, display_pct = TRUE)
         ),
-        toggleDisplayUi(),
         tags$script("$(function() {$('#select_gg').selectpicker('toggle');});")
       ),
       miniButtonBlock(
@@ -109,15 +110,15 @@ ggplot_to_ppt <- function(gg = NULL) {
 
       observeEvent(input$select_gg, {
         if (length(input$select_gg) > 0) {
-          toggleBtnServer(session = session, inputId = "export", type = "enable")
+          toggleBtn(session = session, inputId = "export", type = "enable")
         } else {
-          toggleBtnServer(session = session, inputId = "export", type = "disable")
+          toggleBtn(session = session, inputId = "export", type = "disable")
         }
       }, ignoreNULL = FALSE)
 
       observeEvent(input$export, {
 
-        toggleDisplayServer(session = session, id = "ppt-pb", display = "block")
+        toggleDisplay(session = session, id = "ppt-pb", display = "block")
 
         if (length(input$select_gg) > 0) {
 
@@ -157,7 +158,7 @@ ggplot_to_ppt <- function(gg = NULL) {
     }
 
     inviewer <- dialogViewer(
-      "Explort your ggplot2 to PowerPoint",
+      "Export your ggplot2 to PowerPoint",
       width = 450, height = 180
     )
     runGadget(app = ui, server = server, viewer = inviewer)

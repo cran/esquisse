@@ -3,6 +3,7 @@
 > The purpose of this add-in is to let you explore your data quickly to extract the information they hold. You can only create simple plots, you won't be able to use custom scales and all the power of ggplot2. This is just the start!
 
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![version](http://www.r-pkg.org/badges/version/esquisse)](https://CRAN.R-project.org/package=esquisse)
 [![Travis-CI Build Status](https://travis-ci.org/dreamRs/esquisse.svg?branch=master)](https://travis-ci.org/dreamRs/esquisse)
 
 
@@ -14,7 +15,14 @@ If you find bugs, please open an [issue](https://github.com/dreamRs/esquisse/iss
 
 ## Installation
 
-Not yet on CRAN, you can install from GitHub:
+Install from CRAN with :
+
+```r
+# From CRAN
+install.packages("esquisse")
+```
+
+Or install dev version from GitHub :
 
 ```r
 # with remotes

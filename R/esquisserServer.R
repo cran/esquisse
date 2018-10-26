@@ -1,26 +1,36 @@
-#' Server for addin esquisser
-#'
+
 #' @param input   standard \code{shiny} input
 #' @param output  standard \code{shiny} output
 #' @param session standard \code{shiny} session
-#' @param data    a data.frame to use in the addin, if NULL a modal dialog is launched
-#' to choose one from the user environment
+#' @param data    a \code{reactiveValues} with at least a slot \code{data} containing a \code{data.frame}
+#'  to use in the module. And a slot \code{name} corresponding to the name of the \code{data.frame}.
+#' @param dataModule Data module to use, choose between \code{"GlobalEnv"}
+#'  or \code{"ImportFile"}.
+#' @param sizeDataModule Size for the modal window for selecting data.
 #'
-#' @return nothing
-#' @noRd
+#' @export
+#' 
+#' @rdname esquisse-module
 #'
-#' @importFrom shiny callModule reactiveValues observeEvent renderPrint renderPlot stopApp plotOutput showNotification
+#' @importFrom shiny callModule reactiveValues observeEvent renderPrint
+#'  renderPlot stopApp plotOutput showNotification isolate
+#' @importFrom ggplot2 ggplot_build ggsave
 #'
-esquisserServer <- function(input, output, session, data = NULL) {
+esquisserServer <- function(input, output, session, data = NULL, dataModule = c("GlobalEnv", "ImportFile"), sizeDataModule = "m") {
+  
+  observeEvent(data$data, {
+    dataChart$data <- data$data
+    dataChart$name <- data$name
+  }, ignoreInit = FALSE)
 
-  esquisse.env <- get("esquisse.env", envir = parent.env(environment()))
   dataChart <- callModule(
     module = chooseDataServer, 
     id = "choose-data",
-    data = esquisse.env$data,
-    name = esquisse.env$name,
-    launchOnStart = is.null(esquisse.env$data),
-    coerceVars = getOption(x = "esquisse.coerceVars", default = FALSE)
+    data = isolate(data$data),
+    name = isolate(data$name),
+    launchOnStart = is.null(isolate(data$data)),
+    coerceVars = getOption(x = "esquisse.coerceVars", default = FALSE),
+    dataModule = dataModule, size = sizeDataModule
   )
   observeEvent(dataChart$data, {
     # special case: geom_sf
@@ -70,6 +80,7 @@ esquisserServer <- function(input, output, session, data = NULL) {
   })
 
   # Module chart controls : title, xalabs, colors, export...
+  paramsChart <- reactiveValues(inputs = NULL)
   paramsChart <- shiny::callModule(
     module = chartControlsServer, 
     id = "controls", 
@@ -86,82 +97,121 @@ esquisserServer <- function(input, output, session, data = NULL) {
     img_ref = geom_icon_href(), enabled = geom_possible, selected = geom_possible
   )
 
-  output$plooooooot <- shiny::renderPlot({
+
+  # aesthetics from drag-and-drop
+  aes_r <- reactiveValues(x = NULL, y = NULL, fill = NULL, color = NULL, size = NULL, facet = NULL)
+  observeEvent(input$dragvars$target$xvar, {
+    aes_r$x <- input$dragvars$target$xvar
+  }, ignoreNULL = FALSE)
+  observeEvent(input$dragvars$target$yvar, {
+    aes_r$y <- input$dragvars$target$yvar
+  }, ignoreNULL = FALSE)
+  observeEvent(input$dragvars$target$fill, {
+    aes_r$fill <- input$dragvars$target$fill
+  }, ignoreNULL = FALSE)
+  observeEvent(input$dragvars$target$color, {
+    aes_r$color <- input$dragvars$target$color
+  }, ignoreNULL = FALSE)
+  observeEvent(input$dragvars$target$size, {
+    aes_r$size <- input$dragvars$target$size
+  }, ignoreNULL = FALSE)
+  observeEvent(input$dragvars$target$facet, {
+    aes_r$facet <- input$dragvars$target$facet
+  }, ignoreNULL = FALSE)
+  
+  
+  # plot generated
+  ggplot_r <- reactiveValues(p = NULL)
+  
+  i <- 0
+  output$plooooooot <- renderPlot({
+    
+    req(dataChart$data)
+    req(paramsChart$index)
+    req(paramsChart$inputs)
+    req(geomSelected$x)
+    
+    # i <<- i+1
+    # print(paste("EXECUTED", i))
+    
     data <- dataChart$data
+    
     if (!is.null(paramsChart$index) && is.logical(paramsChart$index)) {
-      data <- data[paramsChart$index, ]
+      data <- data[paramsChart$index, , drop = FALSE]
     }
-    vars <- input$dragvars$target
-    vars <- unlist(vars, use.names = FALSE)
-    if (all(vars %in% names(data))) {
-      res <- tryCatch({
-        gg <- ggtry(
-          data = data,
-          x = input$dragvars$target$xvar,
-          y = input$dragvars$target$yvar,
-          fill = input$dragvars$target$fill,
-          color = input$dragvars$target$color,
-          size = input$dragvars$target$size,
-          params = reactiveValuesToList(paramsChart)$inputs,
-          type = geomSelected$x
-        )
-        list(status = TRUE, gg = gg)
+    gg <- withCallingHandlers(
+      expr = tryCatch(
+        expr = {
+          gg <- ggtry(
+            data = data,
+            x = aes_r$x,
+            y = aes_r$y,
+            fill = aes_r$fill,
+            color = aes_r$color,
+            size = aes_r$size,
+            facet = aes_r$facet,
+            params = reactiveValuesToList(paramsChart)$inputs,
+            type = geomSelected$x
+          )
+          gg <- ggplot_build(gg)
+          ggplot_r$p <- gg$plot
+          print(gg$plot)
+          gg
+        },
+        error = function(e) {
+          shiny::showNotification(ui = conditionMessage(e), type = "error", session = session)
+        }
+      ), 
+      warning = function(w) {
+        shiny::showNotification(ui = conditionMessage(w), type = "warning", session = session)
       }
-      , error = function(e) {
-        list(status = FALSE, gg = NULL, e = e)
-      })
-
-      if (!res$status) {
-        shiny::showNotification(ui = res$e$message, type = "error")
-      }
-
-      res$gg
-    }
-
+    )
   })
 
 
   # Export PowerPoint
-  shiny::observeEvent(paramsChart$inputs$export_ppt, {
+  observeEvent(paramsChart$export_ppt, {
     if (requireNamespace(package = "rvg") & requireNamespace(package = "officer")) {
-      data <- dataChart$data
-      if (!is.null(paramsChart$index) && is.logical(paramsChart$index)) {
-        data <- data[paramsChart$index, ]
-      }
-      gg <- ggtry(
-        data = data,
-        x = input$dragvars$target$xvar,
-        y = input$dragvars$target$yvar,
-        fill = input$dragvars$target$fill,
-        color = input$dragvars$target$color,
-        size = input$dragvars$target$size,
-        params = reactiveValuesToList(paramsChart)$inputs,
-        type = geomSelected$x
-      )
+      gg <- ggplot_r$p
       ppt <- officer::read_pptx()
       ppt <- officer::add_slide(ppt, layout = "Title and Content", master = "Office Theme")
-      ppt <- rvg::ph_with_vg(ppt, print(gg), type = "body")
-      tmp <- tempfile(pattern = "charter", fileext = ".pptx")
-      print(ppt, target = tmp)
-      utils::browseURL(url = tmp)
+      ppt <- try(rvg::ph_with_vg(ppt, print(gg), type = "body"), silent = TRUE)
+      if ("try-error" %in% class(ppt)) {
+        shiny::showNotification(ui = "Export to PowerPoint failed...", type = "error")
+      } else {
+        tmp <- tempfile(pattern = "esquisse", fileext = ".pptx")
+        print(ppt, target = tmp)
+        utils::browseURL(url = tmp)
+      }
     } else {
       warn <- "Packages 'officer' and 'rvg' are required to use this functionality."
       warning(warn, call. = FALSE)
       shiny::showNotification(ui = warn, type = "warning")
     }
   })
+  
+  # Export png
+  observeEvent(paramsChart$export_png, {
+    tmp <- tempfile(pattern = "esquisse", fileext = ".png")
+    pngg <- try(ggsave(filename = tmp, plot = ggplot_r$p, width = 12, height = 8, dpi = "retina"))
+    if ("try-error" %in% class(pngg)) {
+      shiny::showNotification(ui = "Export to PNG failed...", type = "error")
+    } else {
+      utils::browseURL(url = tmp)
+    }
+  })
 
   # Code
-  shiny::callModule(
-    moduleCodeServer, id = "code",
-    varSelected = input$dragvars$target,
+  callModule(
+    moduleCodeServer, id = "controls-code",
+    varSelected = aes_r,
     dataChart = dataChart,
     paramsChart = paramsChart,
     geomSelected = geomSelected
   )
 
   # Close addin
-  shiny::observeEvent(input$close, shiny::stopApp())
+  observeEvent(input$close, shiny::stopApp())
 
 }
 

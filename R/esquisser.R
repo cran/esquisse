@@ -14,8 +14,7 @@
 #' @return code to reproduce chart.
 #' @export
 #'
-#' @importFrom rstudioapi getActiveDocumentContext isAvailable
-#' @importFrom shiny dialogViewer browserViewer runGadget paneViewer
+#' @importFrom shiny dialogViewer browserViewer runGadget paneViewer reactiveValues
 #'
 #' @examples
 #' if (interactive()) {
@@ -35,35 +34,11 @@ esquisser <- function(data = NULL,
   
   options("esquisse.coerceVars" = coerceVars)
 
-  # Get the document context.
-  if (rstudioapi::isAvailable()) {
-    context <- try(rstudioapi::getSourceEditorContext(), silent = TRUE)
-    if ("try-error" %in% class(context)) {
-      defaultData <- ""
-    } else {
-      defaultData <- context$selection[[1]]$text
-    }
-  } else {
-    defaultData <- ""
-  }
-  if (!is.null(data)) {
-    defaultData <- as.character(substitute(data))
-  }
-  
-
-  # Validate selection
-  if (is.null(data) && defaultData %in% ls(pos = globalenv())) {
-    defaultDataValid <- get(x = defaultData, envir = globalenv())
-    if (!inherits(x = defaultDataValid, what = "data.frame")) {
-      data <- NULL
-    } else {
-      data <- as.data.frame(defaultDataValid)
-    }
-  }
-
-  # options("charter.ggbuilder.data" = data)
-  esquisse.env$data <- data
-  esquisse.env$name <- defaultData
+  res_data <- get_data(data, name = deparse(substitute(data)))
+  rv <- reactiveValues(
+    data = res_data$esquisse_data, 
+    name = res_data$esquisse_data_name
+  )
 
   if (viewer == "browser") {
     inviewer <- browserViewer(browser = getOption("browser"))
@@ -71,12 +46,22 @@ esquisser <- function(data = NULL,
     inviewer <- paneViewer(minHeight = "maximize")
   } else {
     inviewer <- dialogViewer(
-      "Explore your data with ggplot2",
+      "Dessine-moi un mouton...",
       width = 1000, height = 750
     )
   }
 
-  runGadget(app = esquisserUI(), server = esquisserServer, viewer = inviewer)
+  runGadget(
+    app = esquisserUI(id = "esquisse"), 
+    server = function(input, output, session) {
+      callModule(
+        module = esquisserServer, 
+        id = "esquisse", 
+        data = rv
+      )
+    }, 
+    viewer = inviewer
+  )
 }
 
 

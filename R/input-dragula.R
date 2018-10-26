@@ -24,7 +24,7 @@
 #' @param status If choices are displayed into a Bootstrap label, you can use Bootstrap
 #'  status to color them, or \code{NULL}.
 #' @param replace When a choice is dragged in a target container already
-#'  containing a choice, does the later be replaced by the new one ?#' 
+#'  containing a choice, does the later be replaced by the new one ?
 #' @param width Width of the input.
 #' @param height Height of each boxes, the total input height is this parameter X 2.
 #' 
@@ -35,9 +35,9 @@
 #' @return a UI definition
 #' @export
 #' 
-#' @importFrom htmltools validateCssUnit
+#' @importFrom htmltools validateCssUnit singleton tags
 #' @importFrom jsonlite toJSON
-#' @importFrom shiny singleton fillRow splitLayout
+#' @importFrom shiny fillRow splitLayout
 #'
 #' @examples
 #' 
@@ -83,6 +83,16 @@ dragulaInput <- function(inputId, sourceLabel, targetsLabels,
   } else {
     stopifnot(length(targetsLabels) == length(targetsIds))
   }
+  
+  replace_targets <- targetsIds
+  if (is.numeric(replace)) {
+    replace_targets <- targetsIds[replace]
+    replace <- TRUE
+  } else {
+    stopifnot(is.logical(replace))
+  }
+  replace_targets <- paste0("dragvars-target-", replace_targets)
+  
   target_list <- lapply(
     X = seq_along(targetsLabels),
     FUN = function(i) {
@@ -93,12 +103,12 @@ dragulaInput <- function(inputId, sourceLabel, targetsLabels,
       )
     }
   )
-  target_list$style <- "height: 50%; padding-right: 0; padding-left: 0; margin-right: 0; margin-left: 0;"
-  target_list$cellArgs <- list(style = "height:90%; padding: 0; margin: 0;")
+  target_list$style <- "height: 50%; font-size: 0;"
+  target_list$cellArgs <- list(style = "height:90%; padding: 0; margin-right: 0.5%;")
   target_list$width <- width
   
   tgw <- 100 / length(targetsIds)
-  tgw <- tgw - 2 / length(targetsIds)
+  tgw <- tgw - 0.5 # / (length(targetsIds)-1)
   tgw <- paste0(tgw, "%")
   target_list$cellWidths <- tgw
   
@@ -119,8 +129,9 @@ dragulaInput <- function(inputId, sourceLabel, targetsLabels,
       `data-source` = jsonlite::toJSON(paste(inputId, "source", sep = "-")),
       `data-targets` = jsonlite::toJSON(paste(inputId, "target", targetsIds, sep = "-")),
       `data-replace` = tolower(replace),
+      `data-replace-ids` = jsonlite::toJSON(x = replace_targets),
       tags$div(
-        style = "height: 50%; width: 100%; padding-right: 0; padding-left: 0; margin-right: 0; margin-left: 0;",
+        style = "height: 50%; width: 99.5%; padding-right: 0; padding-left: 0; margin-right: 0; margin-left: 0;",
         class = "box-dad",
         tags$em(tags$b(sourceLabel, class = "label-background")),
         tags$div(

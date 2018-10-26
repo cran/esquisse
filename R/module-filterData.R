@@ -7,8 +7,8 @@
 #' slot \code{data}, the R code to reproduce the filtering under slot \code{code} and a logical
 #' vector for indexing data under slot \code{index}.
 #' @export
-#' @importFrom htmltools tags tagList 
-#' @importFrom shiny NS singleton
+#' @importFrom htmltools tags tagList singleton 
+#' @importFrom shiny NS 
 #' 
 #' @name filterData-module
 #' 
@@ -270,7 +270,7 @@ naInput <- function(key, var, ns) {
 
 range_val <- function(x) {
   y <- round(x, 2)
-  y[1] <- trunc(x[1]*1000)/1000
+  y[1] <- floor(x[1]*1000)/1000
   y[length(y)] <- ceiling(x[length(x)]*1000)/1000
   return(y)
 }
