@@ -1,7 +1,7 @@
 Package: esquisse
 Type: Package
 Title: Explore and Visualize Your Data Interactively
-Version: 0.1.6
+Version: 0.1.7
 Authors@R: c(person("Fanny", "Meyer", email = "fanny.meyer@dreamrs.fr", role = c("aut")),
   person("Victor", "Perrier", email = "victor.perrier@dreamrs.fr", role = c("aut", "cre")),
   person("Ian", "Carroll", comment = "Facets support", role = "ctb"))
@@ -16,13 +16,13 @@ LazyData: true
 RoxygenNote: 6.1.0
 Imports: miniUI, rstudioapi, shiny (>= 1.0.0), htmltools, jsonlite,
         shinyWidgets (>= 0.4.1), ggplot2 (>= 3.0.0), ggthemes,
-        RColorBrewer, scales, stringi
+        RColorBrewer, viridisLite, scales, stringi
 Suggests: officer, rvg, rio, DT, testthat
 NeedsCompilation: no
-Packaged: 2018-10-26 07:52:59 UTC; perri
+Packaged: 2018-11-14 09:12:27 UTC; perri
 Author: Fanny Meyer [aut],
   Victor Perrier [aut, cre],
   Ian Carroll [ctb] (Facets support)
 Maintainer: Victor Perrier <victor.perrier@dreamrs.fr>
 Repository: CRAN
-Date/Publication: 2018-10-26 08:10:02 UTC
+Date/Publication: 2018-11-14 09:30:03 UTC

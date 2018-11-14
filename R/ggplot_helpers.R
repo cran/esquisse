@@ -17,6 +17,7 @@
 #' @importFrom ggplot2 ggplot aes_ scale_fill_hue scale_fill_gradient scale_fill_brewer
 #'  scale_fill_distiller scale_color_hue scale_color_gradient scale_color_brewer 
 #'  scale_color_distiller labs coord_flip geom_smooth theme element_text facet_wrap
+#'  scale_colour_viridis_d scale_colour_viridis_c scale_fill_viridis_d scale_fill_viridis_c
 #'
 #'
 #' @examples
@@ -112,6 +113,12 @@ ggtry <- function(data, x = NULL, y = NULL, fill = NULL, color = NULL, size = NU
         } else {
           params_scale_fill <- ggplot2::scale_fill_gradient()
         }
+      } else if (params$palette %in% c("viridis", "plasma", "magma", "cividis", "inferno")) {
+        if (filltype == "discrete") {
+          params_scale_fill <- ggplot2::scale_fill_viridis_d(option  = params$palette)
+        } else {
+          params_scale_fill <- ggplot2::scale_fill_viridis_c(option  = params$palette)
+        }
       } else {
         if (filltype == "discrete") {
           params_scale_fill <- ggplot2::scale_fill_brewer(palette = params$palette)
@@ -133,6 +140,12 @@ ggtry <- function(data, x = NULL, y = NULL, fill = NULL, color = NULL, size = NU
         } else {
           params_scale_color <- ggplot2::scale_color_gradient()
         }
+      } else if (params$palette %in% c("viridis", "plasma", "magma", "cividis", "inferno")) {
+        if (colortype == "discrete") {
+          params_scale_color <- ggplot2::scale_colour_viridis_d(option  = params$palette)
+        } else {
+          params_scale_color <- ggplot2::scale_colour_viridis_c(option  = params$palette)
+        }
       } else {
         if (colortype == "discrete") {
           params_scale_color <- ggplot2::scale_color_brewer(palette = params$palette)
@@ -151,7 +164,7 @@ ggtry <- function(data, x = NULL, y = NULL, fill = NULL, color = NULL, size = NU
   # Add geom
   p <- p + do.call(paste0("geom_", chartgeom), paramsgeom)
   p <- p + ggplot2::labs(
-    title = params$title, x = params$x %|e|% x, y = params$y,
+    title = params$title, x = params$x %|e|% x, y = params$y %|e|% y,
     caption = params$caption, subtitle = params$subtitle
   )
 
@@ -460,20 +473,22 @@ ggplot_geom_vars <- function() {
       "continuous",  "empty",       "boxplot",   "0", 
       "continuous",  "empty",       "violin",    "0", 
       "continuous",  "empty",       "density",   "0", 
-      "discrete", "empty",       "bar",       "1", 
+      "discrete",    "empty",       "bar",       "1", 
       "time",        "empty",       "histogram", "1",
-      "continuous",  "discrete", "boxplot",   "0", 
-      "continuous",  "discrete", "violin",    "0", 
-      "continuous",  "discrete", "bar",       "1",
-      "discrete", "continuous",  "boxplot",   "0", 
-      "discrete", "continuous",  "violin",    "0", 
-      "discrete", "continuous",  "bar",       "1",
+      "continuous",  "discrete",    "boxplot",   "0", 
+      "continuous",  "discrete",    "violin",    "0", 
+      "continuous",  "discrete",    "bar",       "1",
+      "discrete",    "continuous",  "boxplot",   "0", 
+      "discrete",    "continuous",  "violin",    "0", 
+      "discrete",    "continuous",  "bar",       "1",
       "continuous",  "continuous",  "point",     "1",
       "continuous",  "continuous",  "line",      "0", 
-      "discrete", "discrete", "tile",      "1",
+      "discrete",    "discrete",    "tile",      "1",
       "time",        "continuous",  "line",      "1", 
       "empty",       "continuous",  "line",      "1", 
-      "continuous",  "continuous",  "tile",      "0"
+      "continuous",  "continuous",  "tile",      "0",
+      "discrete",    "time",        "tile",      "0",
+      "time",        "discrete",    "tile",      "0"
     ), ncol = 4, byrow = TRUE
   )
   x <- data.frame(x, stringsAsFactors = FALSE)
