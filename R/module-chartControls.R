@@ -1,7 +1,7 @@
 
 #' Dropup buttons to hide chart's controls
 #'
-#' @param id Module's id
+#' @param id Module id. See \code{\link[shiny]{callModule}}.
 #'
 #' @return a \code{\link[shiny]{tagList}} containing UI elements
 #' @noRd
@@ -18,37 +18,57 @@ chartControlsUI <- function(id) {
   # ui
   tags$div(
     class = "btn-group-charter btn-group-justified-charter",
+    tags$style(sprintf(
+      "#%s .sw-dropdown-in {margin: 8px 0 8px 10px !important; padding: 0 !important;}",
+      "sw-content-filterdrop"
+    )),
     dropdown(
-      controls_labs(ns), inputId = "labsdrop",
-      style = "default", label = "Labels & Title", 
-      up = TRUE, icon = icon("font"), 
+      controls_labs(ns),
+      inputId = "labsdrop",
+      style = "default",
+      label = "Labels & Title", 
+      up = TRUE, 
+      icon = icon("font"), 
       status = "default btn-controls"
     ),
     dropdown(
       controls_params(ns), controls_appearance(ns),
-      style = "default", label = "Plot options",
-      up = TRUE, inputId = "paramsdrop",
-      icon = icon("gears"), status = "default btn-controls"
-    ),
-    dropdown(
-      tags$div(
-        style = "max-height: 400px; overflow-y: scroll;", #  padding-left: 10px;
-        filterDataUI(id = ns("filter-data"))
-      ),
-      style = "default", label = "Data", 
-      up = TRUE, icon = icon("filter"),
-      right = TRUE, inputId = "filterdrop",
+      style = "default",
+      label = "Plot options",
+      up = TRUE, 
+      inputId = "paramsdrop",
+      icon = icon("gears"), 
       status = "default btn-controls"
     ),
     dropdown(
-      controls_code(ns),
-      style = "default", label = "Export & code", 
-      up = TRUE, right = TRUE, inputId = "codedrop",
-      icon = icon("code"), status = "default btn-controls"
+      tags$div(
+        style = "max-height: 400px; overflow-y: scroll; overflow-x: hidden;", #  padding-left: 10px;
+        filterDF_UI(id = ns("filter-data"))
+      ),
+      style = "default", 
+      label = "Data", 
+      up = TRUE, 
+      icon = icon("filter"),
+      right = TRUE, 
+      inputId = "filterdrop",
+      status = "default btn-controls"
+    ),
+    dropdown(
+      controls_code(ns), 
+      style = "default", 
+      label = "Export & code", 
+      up = TRUE,
+      right = TRUE, 
+      inputId = "codedrop",
+      icon = icon("code"), 
+      status = "default btn-controls"
     ),
     tags$script("$('.sw-dropdown').addClass('btn-group-charter');"),
     tags$script(HTML("$('.sw-dropdown > .btn').addClass('btn-charter');")),
     tags$script("$('#sw-content-filterdrop').click(function (e) {e.stopPropagation();});"),
+    tags$script("$('#sw-content-filterdrop').css('min-width', '350px');"),
+    tags$script("$('#sw-content-codedrop').css('min-width', '350px');"),
+    tags$script("$('#sw-content-paramsdrop').css('min-width', '330px');"),
     useShinyUtils()
   )
 }
@@ -58,77 +78,191 @@ chartControlsUI <- function(id) {
 
 #' Dropup buttons to hide chart's controls
 #'
-#' @param input   standard \code{shiny} input
-#' @param output  standard \code{shiny} output
-#' @param session standard \code{shiny} session
-#' @param type A reactiveValues indicating the type of chart
+#' @param input,output,session standards \code{shiny} server arguments.
+#' @param type \code{reactiveValues} indicating the type of chart.
+#' @param data_table \code{reactive} function returning data used in plot.
+#' @param data_name \code{reactive} function returning data name.
+#' @param ggplot_rv \code{reactiveValues} with ggplot object (for export).
+#' @param use_facet \code{reactive} function returning
+#'  \code{TRUE} / \code{FALSE} if plot use facets.
 #'
 #' @return A reactiveValues with all input's values
 #' @noRd
 #'
 #' @importFrom shiny observeEvent reactiveValues reactiveValuesToList
+#'  downloadHandler renderUI reactive
+#' @importFrom rstudioapi insertText getSourceEditorContext
+#' @importFrom htmltools tags tagList
+#' @importFrom stringi stri_replace_all
 #'
-chartControlsServer <- function(input, output, session, type, data = NULL) {
+chartControlsServer <- function(input, output, session, 
+                                type, data_table, data_name,
+                                ggplot_rv, 
+                                use_facet = shiny::reactive(FALSE), 
+                                use_transX = shiny::reactive(FALSE), 
+                                use_transY = shiny::reactive(FALSE)) {
 
   ns <- session$ns
+  
+  # Export ----
+  
+  output$export_png <- downloadHandler(
+    filename = function() {
+      paste0("esquisse_", format(Sys.time(), format = "%Y%m%dT%H%M%S"), ".png")
+    },
+    content = function(file) {
+      pngg <- try(ggsave(filename = file, plot = ggplot_rv$ggobj$plot, width = 12, height = 8, dpi = "retina"))
+      if ("try-error" %in% class(pngg)) {
+        shiny::showNotification(ui = "Export to PNG failed...", type = "error")
+      }
+    }
+  )
+  output$export_ppt <- downloadHandler(
+    filename = function() {
+      paste0("esquisse_", format(Sys.time(), format = "%Y%m%dT%H%M%S"), ".pptx")
+    },
+    content = function(file) {
+      if (requireNamespace(package = "rvg") & requireNamespace(package = "officer")) {
+        gg <- ggplot_rv$ggobj$plot
+        ppt <- officer::read_pptx()
+        ppt <- officer::add_slide(ppt, layout = "Title and Content", master = "Office Theme")
+        ppt <- try(rvg::ph_with_vg(ppt, ggobj = gg, type = "body"), silent = TRUE)
+        if ("try-error" %in% class(ppt)) {
+          shiny::showNotification(ui = "Export to PowerPoint failed...", type = "error")
+        } else {
+          tmp <- tempfile(pattern = "esquisse", fileext = ".pptx")
+          print(ppt, target = tmp)
+          file.copy(from = tmp, to = file)
+        }
+      } else {
+        warn <- "Packages 'officer' and 'rvg' are required to use this functionality."
+        warning(warn, call. = FALSE)
+        shiny::showNotification(ui = warn, type = "warning")
+      }
+    }
+  )
+  
+  
+  
+  # Code ----
+  observeEvent(input$insert_code, {
+    context <- rstudioapi::getSourceEditorContext()
+    code <- ggplot_rv$code
+    code <- stri_replace_all(str = code, replacement = "+\n", fixed = "+")
+    if (input$insert_code == 1) {
+      code <- paste("library(ggplot2)", code, sep = "\n\n")
+    }
+    if (!is.null(output_filter$code$expr)) {
+      code_dplyr <- deparse(output_filter$code$dplyr, width.cutoff = 80L)
+      code_dplyr <- paste(code_dplyr, collapse = "\n")
+      nm_dat <- data_name()
+      code_dplyr <- paste(nm_dat, code_dplyr, sep = " <- ")
+      code_dplyr <- stri_replace_all(str = code_dplyr, replacement = "%>%\n", fixed = "%>%")
+      code <- paste(code_dplyr, code, sep = "\n\n")
+    }
+    rstudioapi::insertText(text = paste0("\n", code), id = context$id)
+  })
+  
+  output$code <- renderUI({
+    code <- ggplot_rv$code
+    code <- stri_replace_all(str = code, replacement = "+\n", fixed = "+")
+    if (!is.null(output_filter$code$expr)) {
+      code_dplyr <- deparse(output_filter$code$dplyr, width.cutoff = 80L)
+      code_dplyr <- paste(code_dplyr, collapse = "\n")
+      nm_dat <- data_name()
+      code_dplyr <- paste(nm_dat, code_dplyr, sep = " <- ")
+      code_dplyr <- stri_replace_all(str = code_dplyr, replacement = "%>%\n", fixed = "%>%")
+      code <- paste(code_dplyr, code, sep = "\n\n")
+    }
+    htmltools::tagList(
+      rCodeContainer(id = ns("codeggplot"), code)
+    )
+  })
+  
+  
+  
+  # Controls ----
+  
+  observeEvent(use_facet(), {
+    if (isTRUE(use_facet())) {
+      toggleDisplay(id = ns("controls-facet"), display = "block")
+    } else {
+      toggleDisplay(id = ns("controls-facet"), display = "none")
+    }
+  })
+  
+  observeEvent(use_transX(), {
+    if (isTRUE(use_transX())) {
+      toggleDisplay(id = ns("controls-scale-trans-x"), display = "block")
+    } else {
+      toggleDisplay(id = ns("controls-scale-trans-x"), display = "none")
+    }
+  })
+  
+  observeEvent(use_transY(), {
+    if (isTRUE(use_transY())) {
+      toggleDisplay(id = ns("controls-scale-trans-y"), display = "block")
+    } else {
+      toggleDisplay(id = ns("controls-scale-trans-y"), display = "none")
+    }
+  })
 
   observeEvent(type$palette, {
     if (isTRUE(type$palette)) {
-      toggleDisplay(session = session, id = ns("controls-palette"), display = "block")
-      toggleDisplay(session = session, id = ns("controls-spectrum"), display = "none")
+      toggleDisplay(id = ns("controls-palette"), display = "block")
+      toggleDisplay(id = ns("controls-spectrum"), display = "none")
     } else {
-      toggleDisplay(session = session, id = ns("controls-palette"), display = "none")
-      toggleDisplay(session = session, id = ns("controls-spectrum"), display = "block")
+      toggleDisplay(id = ns("controls-palette"), display = "none")
+      toggleDisplay(id = ns("controls-spectrum"), display = "block")
     }
   })
   
   observeEvent(type$x, {
-    if (type$x %in% "bar") {
-      toggleDisplay(session = session, id = ns("controls-discrete"), display = "block")
+    if (type$x %in% c("bar", "line", "area")) {
+      toggleDisplay(id = ns("controls-position"), display = "block")
     } else {
-      toggleDisplay(session = session, id = ns("controls-discrete"), display = "none")
+      toggleDisplay(id = ns("controls-position"), display = "none")
+    }
+    if (type$x %in% "bar") {
+      toggleDisplay(id = ns("controls-flip"), display = "block")
+    } else {
+      toggleDisplay(id = ns("controls-flip"), display = "none")
     }
     if (type$x %in% "histogram") {
-      toggleDisplay(session = session, id = ns("controls-histogram"), display = "block")
+      toggleDisplay(id = ns("controls-histogram"), display = "block")
     } else {
-      toggleDisplay(session = session, id = ns("controls-histogram"), display = "none")
+      toggleDisplay(id = ns("controls-histogram"), display = "none")
     }
     if (type$x %in% c("density", "violin")) {
-      toggleDisplay(session = session, id = ns("controls-density"), display = "block")
+      toggleDisplay(id = ns("controls-density"), display = "block")
     } else {
-      toggleDisplay(session = session, id = ns("controls-density"), display = "none")
+      toggleDisplay(id = ns("controls-density"), display = "none")
     }
     if (type$x %in% "point") {
-      toggleDisplay(session = session, id = ns("controls-scatter"), display = "block")
+      toggleDisplay(id = ns("controls-scatter"), display = "block")
     } else {
-      toggleDisplay(session = session, id = ns("controls-scatter"), display = "none")
+      toggleDisplay(id = ns("controls-scatter"), display = "none")
     }
     if (type$x %in% c("point", "line")) {
-      toggleDisplay(session = session, id = ns("controls-size"), display = "block")
+      toggleDisplay(id = ns("controls-size"), display = "block")
     } else {
-      toggleDisplay(session = session, id = ns("controls-size"), display = "none")
+      toggleDisplay(id = ns("controls-size"), display = "none")
     }
     if (type$x %in% "violin") {
-      toggleDisplay(session = session, id = ns("controls-violin"), display = "block")
+      toggleDisplay(id = ns("controls-violin"), display = "block")
     } else {
-      toggleDisplay(session = session, id = ns("controls-violin"), display = "none")
+      toggleDisplay(id = ns("controls-violin"), display = "none")
     }
   })
   
-  res_data <- callModule(
-    module = filterDataServer, 
-    id = "filter-data", data = data, 
-    width = "95%"
+  output_filter <- callModule(
+    module = filterDF, 
+    id = "filter-data", 
+    data_table = data_table, 
+    data_name = data_name
   )
 
   outin <- reactiveValues(inputs = NULL, export_ppt = NULL, export_png = NULL)
-  
-  observeEvent(input$export_ppt, {
-    outin$export_ppt <- input$export_ppt
-  }, ignoreInit = TRUE)
-  observeEvent(input$export_png, {
-    outin$export_png <- input$export_png
-  }, ignoreInit = TRUE)
 
   observeEvent({
     all_inputs <- reactiveValuesToList(input)
@@ -136,76 +270,83 @@ chartControlsServer <- function(input, output, session, type, data = NULL) {
   }, {
     all_inputs <- reactiveValuesToList(input)
     # remove inputs from filterDataServer module with ID "filter-data"
-    nofilter_inputs <- all_inputs[grep(pattern = "filter-data", x = names(all_inputs), invert = TRUE)]
-    nofilter_inputs <- nofilter_inputs[order(names(nofilter_inputs))]
-    outin$inputs <- nofilter_inputs
+    inputs <- all_inputs[grep(pattern = "filter-data", x = names(all_inputs), invert = TRUE)]
+    inputs <- inputs[grep(pattern = "^labs_", x = names(inputs), invert = TRUE)]
+    inputs <- inputs[grep(pattern = "^export_", x = names(inputs), invert = TRUE)]
+    inputs <- inputs[order(names(inputs))]
+    outin$inputs <- inputs
   })
   
-  observeEvent(res_data$data, {
-    outin$data <- res_data$data
-    outin$code <- res_data$code
-    outin$index <- res_data$index
+  # labs input
+  observe({
+    outin$labs <- list(
+      x = input$labs_x %empty% NULL,
+      y = input$labs_y %empty% NULL,
+      title = input$labs_title %empty% NULL,
+      subtitle = input$labs_subtitle %empty% NULL,
+      caption = input$labs_caption %empty% NULL
+    )
+  })
+  
+  # facet input
+  observe({
+    outin$facet <- list(
+      scales = if (identical(input$facet_scales, "fixed")) NULL else input$facet_scales
+    )
+  })
+  
+  # theme input
+  observe({
+    outin$theme <- list(
+      theme = input$theme,
+      args = list(
+        legend.position = if (identical(input$legend_position, "right")) NULL else input$legend_position
+      )
+    )
+  })
+  
+  # coord input
+  observe({
+    outin$coord <- if (input$flip) "flip" else NULL
+  })
+  
+  # smooth input
+  observe({
+    outin$smooth <- list(
+      add = input$smooth_add,
+      args = list(
+        span = input$smooth_span
+      )
+    )
+  })
+  
+  # transX input
+  observe({
+    outin$transX <- list(
+      use = use_transX() & !identical(input$transX, "identity"),
+      args = list(
+        trans = input$transX
+      )
+    )
+  })
+  
+  # transY input
+  observe({
+    outin$transY <- list(
+      use = use_transY() & !identical(input$transY, "identity"),
+      args = list(
+        trans = input$transY
+      )
+    )
+  })
+  
+  observeEvent(output_filter$data_filtered(), {
+    outin$data <- output_filter$data_filtered()
+    outin$code <- output_filter$code
   })
 
   return(outin)
 }
-
-
-
-
-
-
-
-
-
-# Utility color func ------------------------------------------------------
-
-
-
-
-#' Convert a color in character into hex format
-#'
-#' @param col name of a color, e.g. 'steelblue'
-#'
-#' @return a hex code
-#' @noRd
-#'
-#' @importFrom grDevices rgb col2rgb
-#'
-col2Hex <- function(col) {
-  mat <- grDevices::col2rgb(col, alpha = TRUE)
-  grDevices::rgb(mat[1, ]/255, mat[2, ]/255, mat[3,]/255)
-}
-
-
-get_brewer_name <- function(name) {
-  pals <- RColorBrewer::brewer.pal.info[rownames(RColorBrewer::brewer.pal.info) %in% name, ]
-  res <- lapply(
-    X = seq_len(nrow(pals)),
-    FUN = function(i) {
-      brewer.pal(n = pals$maxcolors[i], name = rownames(pals)[i])
-    }
-  )
-  unlist(res)
-}
-
-
-linear_gradient <- function(cols) {
-  x <- round(seq(from = 0, to = 100, length.out = length(cols)+1))
-  ind <- c(1, rep(seq_along(x)[-c(1, length(x))], each = 2), length(x))
-  m <- matrix(data = paste0(x[ind], "%"), ncol = 2, byrow = TRUE)
-  res <- lapply(
-    X = seq_len(nrow(m)),
-    FUN = function(i) {
-      paste(paste(cols[i], m[i, 1]), paste(cols[i], m[i, 2]), sep = ", ")
-    }
-  )
-  res <- unlist(res)
-  res <- paste(res, collapse = ", ")
-  paste0("linear-gradient(to right, ", res, ");")
-}
-
-
 
 
 
@@ -221,11 +362,11 @@ linear_gradient <- function(cols) {
 controls_labs <- function(ns) {
   tags$div(
     class = "form-group",
-    textInput(inputId = ns("title"), placeholder = "Title", label = NULL),
-    textInput(inputId = ns("subtitle"), placeholder = "Subtitle", label = NULL),
-    textInput(inputId = ns("caption"), placeholder = "Caption", label = NULL),
-    textInput(inputId = ns("x"), placeholder = "X label", label = NULL),
-    textInput(inputId = ns("y"), placeholder = "Y label", label = NULL)
+    textInput(inputId = ns("labs_title"), placeholder = "Title", label = NULL),
+    textInput(inputId = ns("labs_subtitle"), placeholder = "Subtitle", label = NULL),
+    textInput(inputId = ns("labs_caption"), placeholder = "Caption", label = NULL),
+    textInput(inputId = ns("labs_x"), placeholder = "X label", label = NULL),
+    textInput(inputId = ns("labs_y"), placeholder = "Y label", label = NULL)
   )
 }
 
@@ -242,14 +383,28 @@ controls_labs <- function(ns) {
 #' @importFrom shiny icon
 #' @importFrom htmltools tagList tags
 #' @importFrom shinyWidgets colorSelectorInput pickerInput radioGroupButtons spectrumInput
-#'
+#' @importFrom ggplot2 theme_bw theme_classic theme_dark theme_gray theme_grey 
+#'  theme_light theme_linedraw theme_minimal theme_void
+#' @importFrom ggthemes theme_base theme_calc theme_economist theme_economist_white 
+#'  theme_excel theme_few theme_fivethirtyeight theme_foundation theme_gdocs theme_hc 
+#'  theme_igray theme_map theme_pander theme_par theme_solarized theme_solarized_2 
+#'  theme_solid theme_stata theme_tufte theme_wsj
 controls_appearance <- function(ns) {
 
-  if (requireNamespace("ggthemes", quietly = TRUE)) {
-    choices_themes <- ggplot_theme(c("ggplot2", "ggthemes"))
-  } else {
-    choices_themes <- ggplot_theme("ggplot2")
-  }
+  themes <- list(
+    ggplot2 = list(
+      "bw", "classic", "dark", "gray",
+      "grey", "light", "linedraw", "minimal",
+      "void"
+    ),
+    ggthemes = list(
+      "base", "calc", "economist", "economist_white",
+      "excel", "few", "fivethirtyeight", "foundation",
+      "gdocs", "hc", "igray", "map", "pander",
+      "par", "solarized", "solarized_2", "solid",
+      "stata", "tufte", "wsj"
+    )
+  )
 
   cols <- colors_palettes()
 
@@ -259,16 +414,19 @@ controls_appearance <- function(ns) {
       spectrumInput(
         inputId = ns("fill_color"),
         label = "Choose a color:",
-        choices = c(list(c("#0C4C8A", "#EF562D")), unname(cols$choices_colors))
+        choices = c(list(c("#0C4C8A", "#EF562D")), unname(cols$choices_colors)), 
+        width = "100%"
       )
     ),
     tags$div(
       id = ns("controls-palette"), style = "display: none;",
       tags$style(".bootstrap-select .dropdown-menu li a span.text {width: 100%;}"),
       pickerInput(
-        inputId = ns("palette"), label = "Choose a palette:",
+        inputId = ns("palette"),
+        label = "Choose a palette:",
         choices = cols$colors_pal,
-        selected = "ggplot2", width = "100%",
+        selected = "ggplot2", 
+        width = "100%",
         choicesOpt = list(
           content = sprintf(
             "<div style='width:100%%;border-radius:4px; padding: 2px;background:%s;color:%s'>%s</div>",
@@ -278,22 +436,27 @@ controls_appearance <- function(ns) {
       )
     ),
     pickerInput(
-      inputId = ns("theme"), label = "Theme:",
-      choices = choices_themes,
-      selected = "ggplot2::theme_minimal",
-      options = list(size = 10)
+      inputId = ns("theme"),
+      label = "Theme:",
+      choices = themes,
+      selected = "minimal",
+      options = list(size = 10),
+      width = "100%"
     ),
     tags$script(
       paste0("$('#", ns("theme"), "').addClass('dropup');")
     ),
     radioGroupButtons(
-      inputId = ns("legend_position"), label = "Legend position:",
+      inputId = ns("legend_position"), 
+      label = "Legend position:",
       choiceNames = list(
         icon("arrow-left"), icon("arrow-up"),
         icon("arrow-down"), icon("arrow-right"), icon("close")
       ),
       choiceValues = c("left", "top", "bottom", "right", "none"),
-      selected = "right", justified = TRUE, size = "sm"
+      selected = "right",
+      justified = TRUE, 
+      size = "sm"
     )
   )
 }
@@ -307,20 +470,22 @@ controls_appearance <- function(ns) {
 #' @param ns Namespace from module
 #'
 #' @noRd
-#' @importFrom shiny sliderInput conditionalPanel
+#' @importFrom shiny sliderInput conditionalPanel selectInput
 #' @importFrom htmltools tagList tags
 #' @importFrom shinyWidgets materialSwitch prettyRadioButtons
 #'
 controls_params <- function(ns) {
+  
+  scales_trans <- c(
+    "asn", "atanh", "boxcox", "exp", "identity",
+    "log", "log10", "log1p", "log2", "logit", 
+    "probability", "probit", "reciprocal",
+    "reverse", "sqrt"
+  )
+  
   tagList(
     tags$div(
       id = ns("controls-scatter"), style = "display: none; padding-top: 10px;",
-      materialSwitch(
-        inputId = ns("smooth_add"), 
-        label = "Smooth line:",
-        right = TRUE, 
-        status = "primary"
-      ),
       conditionalPanel(
         condition = paste0("input['",  ns("smooth_add"), "']==true"),
         sliderInput(
@@ -329,6 +494,12 @@ controls_params <- function(ns) {
           min = 0.1, max = 1, 
           value = 0.75, step = 0.01
         )
+      ),
+      materialSwitch(
+        inputId = ns("smooth_add"), 
+        label = "Smooth line:",
+        right = TRUE, 
+        status = "primary"
       )
     ),
     tags$div(
@@ -338,6 +509,18 @@ controls_params <- function(ns) {
         label = "Size:",
         min = 0.5, max = 3,
         value = 1
+      )
+    ),
+    tags$div(
+      id = ns("controls-facet"), style = "display: none;",
+      prettyRadioButtons(
+        inputId = ns("facet_scales"),
+        label = "Facet scales:", 
+        inline = TRUE,
+        status = "primary", 
+        choices = c("fixed", "free", "free_x", "free_y"),
+        outline = TRUE, 
+        icon = icon("check")
       )
     ),
     tags$div(
@@ -352,9 +535,31 @@ controls_params <- function(ns) {
     tags$div(
       id = ns("controls-violin"), style = "display: none;",
       prettyRadioButtons(
-        inputId = ns("scale"), label = "Scale:", inline = TRUE,
-        status = "primary", choices = c("area", "count", "width"),
-        outline = TRUE, icon = icon("check")
+        inputId = ns("scale"),
+        label = "Scale:", 
+        inline = TRUE,
+        status = "primary", 
+        choices = c("area", "count", "width"),
+        outline = TRUE, 
+        icon = icon("check")
+      )
+    ),
+    tags$div(
+      id = ns("controls-scale-trans-x"), style = "display: none;",
+      selectInput(
+        inputId = ns("transX"), 
+        label = "X-Axis transform:",
+        selected = "identity", 
+        choices = scales_trans
+      )
+    ),
+    tags$div(
+      id = ns("controls-scale-trans-y"), style = "display: none;",
+      selectInput(
+        inputId = ns("transY"), 
+        label = "Y-Axis transform:",
+        selected = "identity", 
+        choices = scales_trans
       )
     ),
     tags$div(
@@ -367,13 +572,16 @@ controls_params <- function(ns) {
       )
     ),
     tags$div(
-      id = ns("controls-discrete"), style = "display: none;",
+      id = ns("controls-position"), style = "display: none;",
       prettyRadioButtons(
         inputId = ns("position"), label = "Position:",
         choices = c("stack", "dodge", "fill"), inline = TRUE,
         selected = "stack", status = "primary",
         outline = TRUE, icon = icon("check")
-      ),
+      )
+    ),
+    tags$div(
+      id = ns("controls-flip"), style = "display: none;",
       materialSwitch(
         inputId = ns("flip"), 
         label = "Flip coordinates:", 
@@ -392,21 +600,40 @@ controls_params <- function(ns) {
 #' @param ns Namespace from module
 #'
 #' @noRd
-#' @importFrom shiny icon
+#' @importFrom shiny icon downloadButton uiOutput actionLink
 #' @importFrom htmltools tagList tags
-#' @importFrom shinyWidgets actionGroupButtons
 #'
 controls_code <- function(ns) {
   tagList(
-    moduleCodeUI(id = ns("code")),
+    tags$button(
+      class = "btn btn-default btn-xs pull-right btn-copy-code",
+      "Copy to clipboard", `data-clipboard-target` = paste0("#", ns("codeggplot"))
+    ), tags$script("new Clipboard('.btn-copy-code');"),
+    tags$br(),
+    tags$b("Code:"),
+    uiOutput(outputId = ns("code")),
+    tags$textarea(id = ns("holderCode"), style = "display: none;"),
+    actionLink(
+      inputId = ns("insert_code"),
+      label = "Insert code in script",
+      icon = icon("arrow-circle-left")
+    ),
+    tags$br(),
     tags$br(),
     tags$b("Export:"),
-    actionGroupButtons(
-      inputIds = c(ns("export_png"), ns("export_ppt")),
-      labels = list(
-        tags$span(icon("picture-o"), "PNG"),
-        tags$span(icon("file-powerpoint-o"), "PowerPoint")
-      ), status = "primary", fullwidth = TRUE
+    tags$br(),
+    tags$div(
+      class = "btn-group btn-group-justified",
+      downloadButton(
+        outputId = ns("export_png"), 
+        label = ".png",
+        class = "btn-primary btn-xs"
+      ),
+      downloadButton(
+        outputId = ns("export_ppt"), 
+        label = ".pptx",
+        class = "btn-primary btn-xs"
+      )
     )
   )
 }
@@ -423,50 +650,55 @@ controls_code <- function(ns) {
 #' @noRd
 #'
 #' @importFrom RColorBrewer brewer.pal brewer.pal.info
-#' @importFrom scales hue_pal
-#' @importFrom viridisLite viridis magma inferno plasma cividis
+#' @importFrom scales hue_pal viridis_pal
 colors_palettes <- function() {
   ### colors
-  # For colorSelector
+  # For spectrum pre-defined colors
   choices_colors <- list(
-    "viridis" = col2Hex(viridis(10)),
-    "magma" = col2Hex(magma(10)),
-    "inferno" = col2Hex(inferno(10)),
-    "plasma" = col2Hex(plasma(10)),
-    "cividis" = col2Hex(cividis(10))
+    "viridis" = col2Hex(viridis_pal(option = "viridis")(10)),
+    "magma" = col2Hex(viridis_pal(option = "magma")(10)),
+    "inferno" = col2Hex(viridis_pal(option = "inferno")(10)),
+    "plasma" = col2Hex(viridis_pal(option = "plasma")(10)),
+    "cividis" = col2Hex(viridis_pal(option = "cividis")(10))
     ,
-    "Blues" = brewer.pal(n = 9, name = "Blues"),
-    "Greens" = brewer.pal(n = 9, name = "Greens"),
-    "Reds" = brewer.pal(n = 9, name = "Reds"),
-    "Oranges" = brewer.pal(n = 9, name = "Oranges"),
-    "Purples" = brewer.pal(n = 9, name = "Purples"),
-    "Greys" = brewer.pal(n = 9, name = "Greys"),
-    "Dark2" = brewer.pal(n = 8, name = "Dark2"),
-    "Set1" = brewer.pal(n = 8, name = "Set1"),
-    "Paired" = brewer.pal(n = 10, name = "Paired")
+    "Blues" = get_brewer_pal(name = "Blues"),
+    "Greens" = get_brewer_pal(name = "Greens"),
+    "Reds" = get_brewer_pal(name = "Reds"),
+    "Oranges" = get_brewer_pal(name = "Oranges"),
+    "Purples" = get_brewer_pal(name = "Purples"),
+    "Greys" = get_brewer_pal(name = "Greys"),
+    "Dark2" = get_brewer_pal(name = "Dark2"),
+    "Set1" = get_brewer_pal(name = "Set1"),
+    "Paired" = get_brewer_pal(name = "Paired")
   )
 
   # For palette picker
-
-  colors_pal <- lapply(
-    X = split(
-      x = RColorBrewer::brewer.pal.info,
-      f = factor(RColorBrewer::brewer.pal.info$category, labels = c("Diverging", "Qualitative", "Sequential"))
+  colors_pal <- list(
+    Diverging = list(
+      "BrBG", "PiYG", "PRGn", "PuOr", "RdBu", 
+      "RdGy", "RdYlBu", "RdYlGn", "Spectral"
+    ), 
+    Qualitative = list(
+      "Accent", "Dark2", "Paired", "Pastel1", "Pastel2", "Set1", 
+      "Set2", "Set3"
     ),
-    FUN = function(x) {
-      as.list(rownames(x))
-    }
+    Sequential = list(
+      "Blues", "BuGn", "BuPu", 
+      "GnBu", "Greens", "Greys", "Oranges", "OrRd", "PuBu", "PuBuGn", 
+      "PuRd", "Purples", "RdPu", "Reds", "YlGn", "YlGnBu", "YlOrBr", 
+      "YlOrRd"
+    )
   )
-  background_pals <- sapply(unlist(colors_pal, use.names = FALSE), get_brewer_name)
+  background_pals <- sapply(unlist(colors_pal, use.names = FALSE), get_brewer_pal)
   # add ggplot2 hue & viridis
   background_pals <- c(
     list("ggplot2" = scales::hue_pal()(9)),
     list(
-      "viridis" = col2Hex(viridis(10)),
-      "magma" = col2Hex(magma(10)),
-      "inferno" = col2Hex(inferno(10)),
-      "plasma" = col2Hex(plasma(10)),
-      "cividis" = col2Hex(cividis(10))
+      "viridis" = col2Hex(viridis_pal(option = "viridis")(10)),
+      "magma" = col2Hex(viridis_pal(option = "magma")(10)),
+      "inferno" = col2Hex(viridis_pal(option = "inferno")(10)),
+      "plasma" = col2Hex(viridis_pal(option = "plasma")(10)),
+      "cividis" = col2Hex(viridis_pal(option = "cividis")(10))
     ),
     background_pals
   )
@@ -481,10 +713,12 @@ colors_palettes <- function() {
     colors_pal
   )
 
-  list(colors_pal = colors_pal,
-       background_pals = background_pals,
-       colortext_pals = colortext_pals,
-       choices_colors = choices_colors)
+  list(
+    colors_pal = colors_pal,
+    background_pals = background_pals,
+    colortext_pals = colortext_pals,
+    choices_colors = choices_colors
+  )
 }
 
 
@@ -492,6 +726,24 @@ colors_palettes <- function() {
 
 
 
-
+select_geom_controls <- function(x, geoms) {
+  if ("bar" %in% geoms & x %in% c("auto", "bar")) {
+    "bar"
+  } else if ("histogram" %in% geoms & x %in% c("auto", "histogram")) {
+    "histogram"
+  } else if ("density" %in% geoms & x %in% c("auto", "density")) {
+    "density"
+  } else if ("point" %in% geoms & x %in% c("auto", "point")) {
+    "point"
+  } else if ("line" %in% geoms & x %in% c("auto", "line")) {
+    "line"
+  } else if ("area" %in% geoms & x %in% c("auto", "area")) {
+    "area"
+  } else if ("violin" %in% geoms & x %in% c("violin")) {
+    "violin"
+  } else {
+    "auto"
+  }
+} 
 
 

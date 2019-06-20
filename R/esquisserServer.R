@@ -1,7 +1,5 @@
 
-#' @param input   standard \code{shiny} input
-#' @param output  standard \code{shiny} output
-#' @param session standard \code{shiny} session
+#' @param input,output,session standards \code{shiny} server arguments.
 #' @param data    a \code{reactiveValues} with at least a slot \code{data} containing a \code{data.frame}
 #'  to use in the module. And a slot \code{name} corresponding to the name of the \code{data.frame}.
 #' @param dataModule Data module to use, choose between \code{"GlobalEnv"}
@@ -10,13 +8,17 @@
 #'
 #' @export
 #' 
-#' @rdname esquisse-module
+#' @rdname module-esquisse
 #'
 #' @importFrom shiny callModule reactiveValues observeEvent renderPrint
-#'  renderPlot stopApp plotOutput showNotification isolate
+#'  renderPlot stopApp plotOutput showNotification isolate reactiveValuesToList
 #' @importFrom ggplot2 ggplot_build ggsave
+#' @importFrom rlang expr_deparse
 #'
 esquisserServer <- function(input, output, session, data = NULL, dataModule = c("GlobalEnv", "ImportFile"), sizeDataModule = "m") {
+  
+  geomSelected <- reactiveValues(x = "auto")
+  ggplotCall <- reactiveValues(code = "")
   
   observeEvent(data$data, {
     dataChart$data <- data$data
@@ -52,25 +54,18 @@ esquisserServer <- function(input, output, session, data = NULL, dataModule = c(
 
   geom_possible <- reactiveValues(x = "auto")
   geom_controls <- reactiveValues(x = "auto")
-  shiny::observeEvent(list(input$dragvars$target, geomSelected$x), {
-    types <- possible_geom(data = dataChart$data, x = input$dragvars$target$xvar, y = input$dragvars$target$yvar)
-    geom_possible$x <- c("auto", types)
+  shiny::observeEvent(list(input$dragvars$target, input$geom), {
+    geoms <- potential_geoms(
+      data = dataChart$data,
+      mapping = build_aes(
+        data = dataChart$data,
+        x = input$dragvars$target$xvar, 
+        y = input$dragvars$target$yvar
+      )
+    )
+    geom_possible$x <- c("auto", geoms)
 
-    if ("bar" %in% types & geomSelected$x %in% c("auto", "bar")) {
-      geom_controls$x <- "bar"
-    } else if ("histogram" %in% types & geomSelected$x %in% c("auto", "histogram")) {
-      geom_controls$x <- "histogram"
-    } else if ("density" %in% types & geomSelected$x %in% c("auto", "density")) {
-      geom_controls$x <- "density"
-    } else if ("point" %in% types & geomSelected$x %in% c("auto", "point")) {
-      geom_controls$x <- "point"
-    } else if ("line" %in% types & geomSelected$x %in% c("auto", "line")) {
-      geom_controls$x <- "line"
-    } else if ("violin" %in% types & geomSelected$x %in% c("violin")) {
-      geom_controls$x <- "violin"
-    } else {
-      geom_controls$x <- "auto"
-    }
+    geom_controls$x <- select_geom_controls(input$geom, geoms)
     
     if (!is.null(input$dragvars$target$fill) | !is.null(input$dragvars$target$color)) {
       geom_controls$palette <- TRUE
@@ -78,140 +73,157 @@ esquisserServer <- function(input, output, session, data = NULL, dataModule = c(
       geom_controls$palette <- FALSE
     }
   })
-
-  # Module chart controls : title, xalabs, colors, export...
-  paramsChart <- reactiveValues(inputs = NULL)
-  paramsChart <- shiny::callModule(
-    module = chartControlsServer, 
-    id = "controls", 
-    type = geom_controls, 
-    data = reactive(dataChart$data)
-  )
-  # observeEvent(paramsChart$index, {
-  #   dataChart$data_filtered <- dataChart$data[paramsChart$index, ]
-  # })
-
-  # Module to choose type of charts
-  geomSelected <- shiny::callModule(
-    module = imageButtonServer, id = "geom", default = "auto",
-    img_ref = geom_icon_href(), enabled = geom_possible, selected = geom_possible
-  )
-
-
-  # aesthetics from drag-and-drop
-  aes_r <- reactiveValues(x = NULL, y = NULL, fill = NULL, color = NULL, size = NULL, facet = NULL)
-  observeEvent(input$dragvars$target$xvar, {
-    aes_r$x <- input$dragvars$target$xvar
-  }, ignoreNULL = FALSE)
-  observeEvent(input$dragvars$target$yvar, {
-    aes_r$y <- input$dragvars$target$yvar
-  }, ignoreNULL = FALSE)
-  observeEvent(input$dragvars$target$fill, {
-    aes_r$fill <- input$dragvars$target$fill
-  }, ignoreNULL = FALSE)
-  observeEvent(input$dragvars$target$color, {
-    aes_r$color <- input$dragvars$target$color
-  }, ignoreNULL = FALSE)
-  observeEvent(input$dragvars$target$size, {
-    aes_r$size <- input$dragvars$target$size
-  }, ignoreNULL = FALSE)
-  observeEvent(input$dragvars$target$facet, {
-    aes_r$facet <- input$dragvars$target$facet
-  }, ignoreNULL = FALSE)
   
-  
-  # plot generated
-  ggplot_r <- reactiveValues(p = NULL)
-  
-  i <- 0
-  output$plooooooot <- renderPlot({
-    req(input$play_plot, cancelOutput = TRUE)
-    req(dataChart$data)
-    req(paramsChart$index)
-    req(paramsChart$inputs)
-    req(geomSelected$x)
-
-    # i <<- i+1
-    # print(paste("EXECUTED", i))
-    
-    data <- dataChart$data
-    if (!is.null(paramsChart$index) && is.logical(paramsChart$index)) {
-      data <- data[paramsChart$index, , drop = FALSE]
-    }
-    
-    gg <- withCallingHandlers(
-      expr = tryCatch(
-        expr = {
-          gg <- ggtry(
-            data = data,
-            x = aes_r$x,
-            y = aes_r$y,
-            fill = aes_r$fill,
-            color = aes_r$color,
-            size = aes_r$size,
-            facet = aes_r$facet,
-            params = reactiveValuesToList(paramsChart)$inputs,
-            type = geomSelected$x
-          )
-          gg <- ggplot_build(gg)
-          ggplot_r$p <- gg$plot
-          print(gg$plot)
-          gg
-        },
-        error = function(e) {
-          shiny::showNotification(ui = conditionMessage(e), type = "error", session = session)
-        }
-      ), 
-      warning = function(w) {
-        shiny::showNotification(ui = conditionMessage(w), type = "warning", session = session)
-      }
+  observeEvent(input$geom, {
+    geomSelected$x <- input$geom
+  })
+  observeEvent(geom_possible$x, {
+    geoms <- c(
+      "auto", "line", "area", "bar", "histogram",
+      "point", "boxplot", "violin", "density",
+      "tile", "sf"
+    )
+    updateDropInput(
+      session = session,
+      inputId = "geom",
+      selected = setdiff(geom_possible$x, "auto")[1],
+      disabled = setdiff(geoms, geom_possible$x)
     )
   })
 
-
-  # Export PowerPoint
-  observeEvent(paramsChart$export_ppt, {
-    if (requireNamespace(package = "rvg") & requireNamespace(package = "officer")) {
-      gg <- ggplot_r$p
-      ppt <- officer::read_pptx()
-      ppt <- officer::add_slide(ppt, layout = "Title and Content", master = "Office Theme")
-      ppt <- try(rvg::ph_with_vg(ppt, print(gg), type = "body"), silent = TRUE)
-      if ("try-error" %in% class(ppt)) {
-        shiny::showNotification(ui = "Export to PowerPoint failed...", type = "error")
-      } else {
-        tmp <- tempfile(pattern = "esquisse", fileext = ".pptx")
-        print(ppt, target = tmp)
-        utils::browseURL(url = tmp)
-      }
-    } else {
-      warn <- "Packages 'officer' and 'rvg' are required to use this functionality."
-      warning(warn, call. = FALSE)
-      shiny::showNotification(ui = warn, type = "warning")
-    }
-  })
-  
-  # Export png
-  observeEvent(paramsChart$export_png, {
-    tmp <- tempfile(pattern = "esquisse", fileext = ".png")
-    pngg <- try(ggsave(filename = tmp, plot = ggplot_r$p, width = 12, height = 8, dpi = "retina"))
-    if ("try-error" %in% class(pngg)) {
-      shiny::showNotification(ui = "Export to PNG failed...", type = "error")
-    } else {
-      utils::browseURL(url = tmp)
-    }
-  })
-
-  # Code
-  callModule(
-    moduleCodeServer, id = "controls-code",
-    varSelected = aes_r,
-    dataChart = dataChart,
-    paramsChart = paramsChart,
-    geomSelected = geomSelected
+  # Module chart controls : title, xlabs, colors, export...
+  paramsChart <- reactiveValues(inputs = NULL)
+  paramsChart <- callModule(
+    module = chartControlsServer, 
+    id = "controls", 
+    type = geom_controls, 
+    data_table = reactive(dataChart$data),
+    data_name = reactive({
+      req(dataChart$name)
+      dataChart$name
+    }),
+    ggplot_rv = ggplotCall,
+    use_facet = reactive({
+      !is.null(input$dragvars$target$facet)
+    }),
+    use_transX = reactive({
+      if (is.null(input$dragvars$target$xvar))
+        return(FALSE)
+      identical(
+        x = col_type(dataChart$data[[input$dragvars$target$xvar]]),
+        y = "continuous"
+      )
+    }),
+    use_transY = reactive({
+      if (is.null(input$dragvars$target$yvar))
+        return(FALSE)
+      identical(
+        x = col_type(dataChart$data[[input$dragvars$target$yvar]]),
+        y = "continuous"
+      )
+    })
   )
+
+  
+  output$plooooooot <- renderPlot({
+    req(input$play_plot, cancelOutput = TRUE)
+    req(dataChart$data)
+    req(paramsChart$data)
+    req(paramsChart$inputs)
+    req(input$geom)
+    
+    aes_input <- make_aes(input$dragvars$target)
+
+    req(unlist(aes_input) %in% names(dataChart$data))
+    
+    mapping <- build_aes(
+      data = dataChart$data,
+      .list = aes_input, 
+      geom = input$geom
+    )
+    
+    geoms <- potential_geoms(
+      data = dataChart$data,
+      mapping = mapping
+    )
+    req(input$geom %in% geoms)
+    
+    data <- paramsChart$data
+    
+    scales <- which_pal_scale(
+      mapping = mapping,
+      palette = paramsChart$inputs$palette,
+      data = data
+    )
+    
+    if (identical(input$geom, "auto")) {
+      geom <- "blank"
+    } else {
+      geom <- input$geom
+    }
+    
+    geom_args <- match_geom_args(input$geom, paramsChart$inputs, mapping = mapping)
+    
+    if (isTRUE(paramsChart$smooth$add) & input$geom %in% c("point", "line")) {
+      geom <- c(geom, "smooth")
+      geom_args <- c(
+        setNames(list(geom_args), input$geom),
+        list(smooth = paramsChart$smooth$args)
+      )
+    }
+    
+    scales_args <- scales$args
+    scales <- scales$scales
+
+    if (isTRUE(paramsChart$transX$use)) {
+      scales <- c(scales, "x_continuous")
+      scales_args <- c(scales_args, list(x_continuous = paramsChart$transX$args))
+    }
+    
+    if (isTRUE(paramsChart$transY$use)) {
+      scales <- c(scales, "y_continuous")
+      scales_args <- c(scales_args, list(y_continuous = paramsChart$transY$args))
+    }
+    
+    gg_call <- ggcall(
+      data = dataChart$name, 
+      mapping = mapping, 
+      geom = geom,
+      geom_args = geom_args, 
+      scales = scales, 
+      scales_args = scales_args,
+      labs = paramsChart$labs, 
+      theme = paramsChart$theme$theme,
+      theme_args = paramsChart$theme$args, 
+      coord = paramsChart$coord, 
+      facet = input$dragvars$target$facet, 
+      facet_args = paramsChart$facet
+    )
+
+    ggplotCall$code <- expr_deparse(gg_call, width = 1e4)
+    ggplotCall$call <- gg_call
+    
+    ggplotCall$ggobj <- safe_ggplot(
+      expr = gg_call, 
+      data = setNames(list(data), dataChart$name)
+    )
+    ggplotCall$ggobj$plot
+  })
+
 
   # Close addin
   observeEvent(input$close, shiny::stopApp())
 
+  # Ouput of module (if used in Shiny)
+  output_module <- reactiveValues(code_plot = NULL, code_filters = NULL, data = NULL)
+  observeEvent(ggplotCall$code, {
+    output_module$code_plot <- ggplotCall$code
+  }, ignoreInit = TRUE)
+  observeEvent(paramsChart$data, {
+    output_module$code_filters <- reactiveValuesToList(paramsChart$code)
+    output_module$data <- paramsChart$data
+  }, ignoreInit = TRUE)
+
+  return(output_module)
 }
 

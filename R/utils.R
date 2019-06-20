@@ -14,85 +14,18 @@
 
 `%nin%` <- Negate(`%in%`)
 
-`%+&%` <- function(e1, e2) {
-  if (is.null(e2))
-    e2 <- ""
-  if (is.null(e1))
-    e1 <- ""
-  if (e1 != "" & e2 != "") {
-    paste(e1, e2, sep = " & ")
-  } else if (e1 != "" & e2 == "") {
-    e1
-  } else if (e1 == "" & e2 != "") {
-    e2
-  } else {
-    ""
-  }
-}
-
-`%+|%` <- function(e1, e2) {
-  if (is.null(e2))
-    e2 <- ""
-  if (is.null(e1))
-    e1 <- ""
-  if (e1 != "" & e2 != "") {
-    paste(e1, e2, sep = " | ")
-  } else if (e1 != "" & e2 == "") {
-    e1
-  } else if (e1 == "" & e2 != "") {
-    ""
-  } else {
-    ""
-  }
-}
-
-`%+1%` <- function(e1, e2) {
-  if (is.null(e2))
-    e2 <- ""
-  if (is.null(e1))
-    e1 <- ""
-  if (e1 != "" & e2 != "") {
-    paste("(", e1, e2, ")")
-  } else if (e1 != "" & e2 == "") {
-    e1
-  } else if (e1 == "" & e2 != "") {
-    if (grepl(pattern = "&", x = e2)) {
-      gsub(pattern = "(&|\\|)\\s", replacement = "", x = e2)
-    } else {
-      ""
-    }
-  } else {
-    ""
-  }
-}
-
-`%+%` <- function(e1, e2) {
-  if (is.null(e2))
-    e2 <- ""
-  if (is.null(e1))
-    e1 <- ""
-  if (e1 != "" & e2 != "") {
-    paste("(", e1, e2, ")")
-  } else if (e1 != "" & e2 == "") {
-    e1
-  } else if (e1 == "" & e2 != "") {
-    e2
-  } else {
-    ""
-  }
-}
 
 
-# Utility : drop NULL from list
-dropNulls <- function (x) {
+
+
+# utilities borrowed from shiny
+dropNulls <- function(x) {
   x[!vapply(x, is.null, FUN.VALUE = logical(1))]
 }
-
-nullOrEmpty <- function (x) {
+nullOrEmpty <- function(x) {
   is.null(x) || length(x) == 0 || x == ""
 }
-dropNullsOrEmpty <- function (x)
-{
+dropNullsOrEmpty <- function(x) {
   x[!vapply(x, nullOrEmpty, FUN.VALUE = logical(1))]
 }
 
@@ -105,9 +38,6 @@ clean_string <- function(str) {
   return(str)
 }
 
-backticks <- function(x) {
-  paste0("`", x, "`")
-}
 
 
 #' Retrieve a data.frame by name from an environment
@@ -206,21 +136,24 @@ badgeType <- function(col_name, col_type) {
 
 
 
+
 #' Try to guess type of a vector
 #'
 #' @param x a vector
 #'
 #' @noRd
 col_type <- function(x, no_id = FALSE) {
+  if (is.null(x))
+    return(NULL)
   
   if (is.data.frame(x) && inherits(x, what = "sf")) {
     x <- x[, setdiff(names(x), attr(x, "sf_column")), drop = FALSE]
   } 
-
+  
   if (is.data.frame(x)) {
     return(unlist(lapply(x, col_type), use.names = FALSE))
   } else {
-    if (inherits(x, c("logical", "character", "factor"))) {
+    if (inherits(x, c("logical", "character", "factor", "AsIs"))) {
       n <- length(x)
       u <- length(unique(x))
       if (u/n < 0.99 | u <= 30 | no_id) {
@@ -238,38 +171,43 @@ col_type <- function(x, no_id = FALSE) {
       return("continuous")
     }
   }
-
+  
   NULL
 }
 
 
 
 # utils for geom icons
-
-#' @importFrom stats setNames
-geom_icon_href <- function() {
-  ## --->>> TODO SF <<<--- ##
-  href <- "esquisse/geomIcon/gg-%s.png"
-  geoms <- c("auto", "line", "bar", "histogram", 
-             "point", "boxplot", "violin", "density", "tile", "sf") #
-  lapply(
-    X = setNames(geoms, geoms),
-    FUN = sprintf, fmt = href
+geomIcons <- function() {
+  geoms <- c(
+    "auto", "line", "area", "bar", "histogram", 
+    "point", "boxplot", "violin", "density", 
+    "tile", "sf"
   )
-}
-
-geom_icon_input <- function() {
-  ## --->>> TODO SF <<<--- ##
-  geoms <- c("auto", "line", "bar", "histogram", 
-             "point", "boxplot", "violin", "density", "tile", "sf") # 
   href <- "esquisse/geomIcon/gg-%s.png"
-  lapply(
+  geomsChoices <- lapply(
     X = geoms,
     FUN = function(x) {
       list(inputId = x, img = sprintf(fmt = href, x), label = capitalize(x))
     }
   )
+
+  geomsChoicesNames <- lapply(
+    X = geomsChoices,
+    FUN = function(x) {
+      list(
+        style = "width: 90px;",
+        tags$img(src = x$img, width = 56, height = 56),
+        tags$br(), x$label
+      )
+    }
+  )
+  geomsChoicesValues <- unlist(lapply(geomsChoices, `[[`, "label"), use.names = FALSE)
+  geomsChoicesValues <- tolower(geomsChoicesValues)
+  
+  list(names = geomsChoicesNames, values = geomsChoicesValues)
 }
+
 
 capitalize <- function(x) {
   lo <- substring(text = x, first = 2)
@@ -279,6 +217,63 @@ capitalize <- function(x) {
   lo <- gsub(pattern = "_", replacement = " ", x = lo)
   paste0(up, lo)
 }
+
+
+dropListColumns <- function(x) {
+  type_col <- vapply(X = x, FUN = typeof, FUN.VALUE = character(1), USE.NAMES = FALSE)
+  x[, type_col != "list", drop = FALSE]
+}
+
+
+
+
+
+
+
+# colors ------------------------------------------------------------------
+
+#' Convert a color in character into hex format
+#'
+#' @param col name of a color, e.g. 'steelblue'
+#'
+#' @return a hex code
+#' @noRd
+#'
+#' @importFrom grDevices rgb col2rgb
+#'
+col2Hex <- function(col) {
+  mat <- grDevices::col2rgb(col, alpha = TRUE)
+  grDevices::rgb(mat[1, ]/255, mat[2, ]/255, mat[3,]/255)
+}
+
+
+get_brewer_pal <- function(name) {
+  bpi <- RColorBrewer::brewer.pal.info
+  maxn <- bpi[rownames(bpi) %in% name, ]
+  maxn <- maxn$maxcolors
+  brewer.pal(n = maxn, name = name)
+}
+
+
+linear_gradient <- function(cols) {
+  x <- round(seq(from = 0, to = 100, length.out = length(cols)+1))
+  ind <- c(1, rep(seq_along(x)[-c(1, length(x))], each = 2), length(x))
+  m <- matrix(data = paste0(x[ind], "%"), ncol = 2, byrow = TRUE)
+  res <- lapply(
+    X = seq_len(nrow(m)),
+    FUN = function(i) {
+      paste(paste(cols[i], m[i, 1]), paste(cols[i], m[i, 2]), sep = ", ")
+    }
+  )
+  res <- unlist(res)
+  res <- paste(res, collapse = ", ")
+  paste0("linear-gradient(to right, ", res, ");")
+}
+
+
+
+
+
 
 
 

@@ -5,7 +5,7 @@
 \title{An add-in to easily create plots with ggplot2}
 \usage{
 esquisser(data = NULL, coerceVars = getOption(x =
-  "esquisse.coerceVars", default = FALSE), viewer = getOption(x =
+  "esquisse.coerceVars", default = TRUE), viewer = getOption(x =
   "esquisse.viewer", default = "dialog"))
 }
 \arguments{
@@ -25,14 +25,25 @@ An add-in to easily create plots with ggplot2
 }
 \examples{
 if (interactive()) {
-# Launch with:
+# Launch with :
 esquisser(iris)
 # If in RStudio it will be launched by default in dialog window
 # If not, it will be launched in browser
 
-# change diplay mode with:
-options("esquisse.display.mode" = "viewer")
+# Launch esquisse in browser :
+esquisser(iris, viewer = "browser")
+
+# You can set this option in .Rprofile :
+options("esquisse.viewer" = "viewer")
 # or
-options("esquisse.display.mode" = "browser")
+options("esquisse.viewer" = "browser")
+
+# esquisse use shiny::runApp
+# see ?shiny::runApp to see options 
+# available, example to use custom port:
+
+options("shiny.port" = 8080)
+esquisser(iris, viewer = "browser")
+
 }
 }

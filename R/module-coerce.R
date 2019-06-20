@@ -1,9 +1,9 @@
 
 #' Coerce data.frame's columns module
 #'
-#' @param id Module's id
+#' @param id Module id. See \code{\link[shiny]{callModule}}.
 #' 
-#' @name coerce-module
+#' @name module-coerce
 #'
 #' @return a \code{reactiveValues} with two slots: \code{data} original \code{data.frame}
 #'  with modified columns, and \code{names} column's names with call to coerce method.
@@ -38,7 +38,7 @@
 #'     fluidRow(
 #'       column(
 #'         width = 4,
-#'         coerceUI(id = "exemple", data = foo)
+#'         coerceUI(id = "example")
 #'       ),
 #'       column(
 #'         width = 8,
@@ -50,7 +50,7 @@
 #'   
 #'   server <- function(input, output, session) {
 #'     
-#'     result <- callModule(module = coerceServer, id = "exemple", data = foo)
+#'     result <- callModule(module = coerceServer, id = "example", data = reactive({foo}))
 #'     
 #'     output$print_result <- renderPrint({
 #'       str(result$data)
@@ -119,9 +119,7 @@ coerceUI <- function(id) {
 }
 
 
-#' @param input standard \code{shiny} input.
-#' @param output standard \code{shiny} output.
-#' @param session standard \code{shiny} session.
+#' @param input,output,session standards \code{shiny} server arguments.²
 #' @param data A \code{data.frame} or a \code{reactive}
 #'  function returning a \code{data.frame} or a 
 #'  \code{reactivevalues} with a slot containing a \code{data.frame} 
@@ -131,7 +129,7 @@ coerceUI <- function(id) {
 #'
 #' @export
 #' 
-#' @rdname coerce-module
+#' @rdname module-coerce
 #' 
 #' @importFrom htmltools tags
 #' @importFrom shinyWidgets updatePickerInput
@@ -147,14 +145,14 @@ coerceServer <- function(input, output, session, data, reactiveValuesSlot = "dat
   
   observe({
     if (is.reactive(data)) {
-      toggleInput(session = session, inputId = ns("valid_coerce"), enable = TRUE)
-      toggleInput(session = session, inputId = ns("var"), enable = TRUE)
+      toggleInput(inputId = ns("valid_coerce"), enable = TRUE)
+      toggleInput(inputId = ns("var"), enable = TRUE)
     } else if (is.reactivevalues(data) && !is.null(data[[reactiveValuesSlot]])) {
-      toggleInput(session = session, inputId = ns("valid_coerce"), enable = TRUE)
-      toggleInput(session = session, inputId = ns("var"), enable = TRUE)
+      toggleInput(inputId = ns("valid_coerce"), enable = TRUE)
+      toggleInput(inputId = ns("var"), enable = TRUE)
     } else {
-      toggleInput(session = session, inputId = ns("valid_coerce"), enable = FALSE)
-      toggleInput(session = session, inputId = ns("var"), enable = FALSE)
+      toggleInput(inputId = ns("valid_coerce"), enable = FALSE)
+      toggleInput(inputId = ns("var"), enable = FALSE)
     }
   })
   

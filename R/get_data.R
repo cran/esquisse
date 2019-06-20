@@ -42,6 +42,9 @@ get_data <- function(data = NULL, name = NULL) {
       }
       
       # esquisse_data_name <- gsub("\\[.*", "", esquisse_data_name)
+    } else {
+      esquisse_data <- NULL
+      esquisse_data_name <- ""
     }
   } else {
     if (rstudioapi::isAvailable()) {
@@ -70,8 +73,6 @@ get_data <- function(data = NULL, name = NULL) {
     }
   }
   
-  # esquisse.env$data <- esquisse_data
-  # esquisse.env$name <- esquisse_data_name
   list(esquisse_data = esquisse_data, esquisse_data_name = esquisse_data_name)
 }
 

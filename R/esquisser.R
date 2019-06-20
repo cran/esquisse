@@ -18,23 +18,37 @@
 #'
 #' @examples
 #' if (interactive()) {
-#' # Launch with:
+#' # Launch with :
 #' esquisser(iris)
 #' # If in RStudio it will be launched by default in dialog window
 #' # If not, it will be launched in browser
 #' 
-#' # change diplay mode with:
-#' options("esquisse.display.mode" = "viewer")
+#' # Launch esquisse in browser :
+#' esquisser(iris, viewer = "browser")
+#' 
+#' # You can set this option in .Rprofile :
+#' options("esquisse.viewer" = "viewer")
 #' # or
-#' options("esquisse.display.mode" = "browser")
+#' options("esquisse.viewer" = "browser")
+#' 
+#' # esquisse use shiny::runApp
+#' # see ?shiny::runApp to see options 
+#' # available, example to use custom port:
+#' 
+#' options("shiny.port" = 8080)
+#' esquisser(iris, viewer = "browser")
+#' 
 #' }
 esquisser <- function(data = NULL, 
-                      coerceVars = getOption(x = "esquisse.coerceVars", default = FALSE),
+                      coerceVars = getOption(x = "esquisse.coerceVars", default = TRUE),
                       viewer = getOption(x = "esquisse.viewer", default = "dialog")) {
   
   options("esquisse.coerceVars" = coerceVars)
 
   res_data <- get_data(data, name = deparse(substitute(data)))
+  if (!is.null(res_data$esquisse_data)) {
+    res_data$esquisse_data <- dropListColumns(res_data$esquisse_data)
+  }
   rv <- reactiveValues(
     data = res_data$esquisse_data, 
     name = res_data$esquisse_data_name
@@ -46,7 +60,7 @@ esquisser <- function(data = NULL,
     inviewer <- paneViewer(minHeight = "maximize")
   } else {
     inviewer <- dialogViewer(
-      "Dessine-moi un mouton...",
+      "C'est le temps que tu as perdu pour ta rose qui rend ta rose importante.",
       width = 1000, height = 750
     )
   }

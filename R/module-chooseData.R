@@ -7,12 +7,13 @@
 #' @param id Module's id.
 #' @param label Button's label.
 #' @param icon Button's icon.
+#' @param ... Arguments passed to \code{\link{actionButton}}
 #'
 #' @return a \code{\link[shiny]{reactiveValues}} containing the data selected under slot \code{data}
 #' and the name of the selected \code{data.frame} under slot \code{name}.
 #' @export
 #' 
-#' @name chooseData-module
+#' @name module-chooseData
 #' 
 #' @importFrom htmltools tagList tags singleton
 #' @importFrom shiny NS actionButton icon 
@@ -82,7 +83,7 @@
 #' 
 #' }
 #' 
-chooseDataUI <- function(id, label = "Choose data", icon = "database") {
+chooseDataUI <- function(id, label = "Data", icon = "database", ...) {
   
   ns <- NS(id)
   
@@ -97,16 +98,15 @@ chooseDataUI <- function(id, label = "Choose data", icon = "database") {
     useShinyUtils(),
     actionButton(
       inputId = ns("changeData"), label = label,
-      icon = icon, width = "100%"
+      icon = icon, width = "100%", ...
     )
   )
 }
 
-#' @param input Standard \code{shiny} input.
-#' @param output Standard \code{shiny} output.
-#' @param session Standard \code{shiny} session.
+#' @param input,output,session standards \code{shiny} server arguments.
 #' @param dataModule Data module to use, choose between \code{"GlobalEnv"}
-#'  or \code{"ImportFile"}.
+#'  (select ad \code{data.frame} from Global environment)
+#'  or \code{"ImportFile"} (import an external file supported by \code{\link[rio]{import}}).
 #' @param data A \code{data.frame} to use by default.
 #' @param name Character, object's name to use for \code{data}.
 #' @param selectVars Display module to select variables, \code{TRUE} by default.
@@ -116,11 +116,12 @@ chooseDataUI <- function(id, label = "Choose data", icon = "database") {
 #' 
 #' @export
 #'
-#' @rdname chooseData-module
+#' @rdname module-chooseData
 #'
-#' @importFrom shiny showModal modalDialog observeEvent reactiveValues callModule observe
+#' @importFrom shiny showModal modalDialog observeEvent reactiveValues callModule observe icon
 #' @importFrom htmltools tags HTML
-chooseDataServer <- function(input, output, session, dataModule = c("GlobalEnv", "ImportFile"), 
+chooseDataServer <- function(input, output, session, 
+                             dataModule = c("GlobalEnv", "ImportFile"), 
                              data = NULL, name = NULL, 
                              selectVars = TRUE, coerceVars = FALSE, 
                              launchOnStart = TRUE, size = "m") {
@@ -141,20 +142,33 @@ chooseDataServer <- function(input, output, session, dataModule = c("GlobalEnv",
   return_data <- reactiveValues(data = data, name = name)
   
   if (isTRUE(launchOnStart)) {
-    showModal(modalDialog(datModUI(
-      id = ns("chooseData"), 
-      selectVars = selectVars, 
-      coerceVars = coerceVars
-      ), size = size, fade = FALSE)
-    )
+    showModal(modalDialog(tagList(
+      tags$button(
+        icon("close"), 
+        class = "btn btn-link pull-right",
+        `data-dismiss` = "modal"
+      ),
+      datModUI(
+        id = ns("chooseData"), 
+        selectVars = selectVars, 
+        coerceVars = coerceVars
+      )
+    ), size = size, fade = FALSE, footer = NULL))
   }
   
   observeEvent(input$changeData, {
-    showModal(modalDialog(datModUI(
-      id = ns("chooseData"), 
-      selectVars = selectVars, 
-      coerceVars = coerceVars
-    ), size = size, fade = FALSE))
+    showModal(modalDialog(tagList(
+      tags$button(
+        icon("close"), 
+        class = "btn btn-link pull-right",
+        `data-dismiss` = "modal"
+      ),
+      datModUI(
+        id = ns("chooseData"), 
+        selectVars = selectVars, 
+        coerceVars = coerceVars
+      )
+    ), size = size, fade = FALSE, footer = NULL))
   })
   
   return_data <- callModule(

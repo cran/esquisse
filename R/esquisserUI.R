@@ -6,11 +6,18 @@
 #' @param header Logical. Display or not \code{esquisse} header.
 #' @param choose_data Logical. Display or not the button to choose data.
 #' 
+#' @return A \code{reactiveValues} with 3 slots :
+#'  \itemize{
+#'   \item \strong{code_plot} : code to generate plot.
+#'   \item \strong{code_filters} : a list of length two with code to reproduce filters.
+#'   \item \strong{data} : \code{data.frame} used in plot (with filters applied).
+#'  }
+#' 
 #' @note For the module to display correctly, it is necessary to place it in a container with a fixed height.
 #'
 #' @export
 #' 
-#' @name esquisse-module
+#' @name module-esquisse
 #'
 #' @importFrom htmltools tags tagList singleton
 #' @importFrom shiny plotOutput icon actionButton NS
@@ -29,6 +36,10 @@
 #' 
 #' ui <- fluidPage(
 #'   tags$h1("Use esquisse as a Shiny module"),
+#'   
+#'   # Force scroll bar to appear (otherwise hidden by esquisse)
+#'   tags$style("html, body {overflow: visible !important;"),
+#'   
 #'   radioButtons(
 #'     inputId = "data", 
 #'     label = "Data to use:", 
@@ -109,6 +120,10 @@ esquisserUI <- function(id, header = TRUE, choose_data = TRUE) {
     tags$div(
       class = "pull-right",
       miniTitleBarButton(inputId = ns("close"), label = "Close")
+    ),
+    tags$div(
+      class = "pull-left",
+      if (isTRUE(choose_data) & isTRUE(header)) chooseDataUI(id = ns("choose-data"), class = "btn-sm")
     )
   )
     
@@ -127,21 +142,22 @@ esquisserUI <- function(id, header = TRUE, choose_data = TRUE) {
     layoutAddin(
       top_left = htmltools::tagList(
         htmltools::tags$div(
-          style = "padding: 10px;",
-          imageButtonUI(
-            id = ns("geom"),
-            imgs = geom_icon_input(), 
-            width = "240px"
+          style = if (isTRUE(choose_data) & !isTRUE(header)) "padding: 10px;" else "padding: 8px; height: 108%;",
+          dropInput(
+            inputId = ns("geom"),
+            choicesNames = geomIcons()$names, 
+            choicesValues = geomIcons()$values,
+            dropWidth = "290px",
+            width = "100%"
           ),
-          # htmltools::tags$br(),
-          if (isTRUE(choose_data)) chooseDataUI(id = ns("choose-data"))
+          if (isTRUE(choose_data) & !isTRUE(header)) chooseDataUI(id = ns("choose-data"))
         )
       ),
       top_right = dragulaInput(
         inputId = ns("dragvars"), 
         sourceLabel = "Variables", 
-        targetsLabels = c("X", "Y", "Fill", "Color", "Size", "Facet"), 
-        targetsIds = c("xvar", "yvar", "fill", "color", "size", "facet"),
+        targetsLabels = c("X", "Y", "Fill", "Color", "Size", "Group", "Facet"), 
+        targetsIds = c("xvar", "yvar", "fill", "color", "size", "group", "facet"),
         choices = "",
         badge = FALSE, 
         width = "100%", 
