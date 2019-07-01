@@ -1,3 +1,10 @@
+# esquisse 0.2.1
+
+* Fix bug when adding smooth line (missing import for `geom_smooth`).
+* Support for themes and scales (color/fill) from [{hrbrthemes}](https://github.com/hrbrmstr/hrbrthemes).
+* Set labels for fill, color and size aesthetics.
+
+
 # esquisse 0.2.0
 
 * Now use `rlang` to generate ggplot code.
