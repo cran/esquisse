@@ -1,10 +1,17 @@
+
 #' @title Esquisse Shiny module
 #' 
 #' @description Launch \code{esquisse} in a classic Shiny app.
 #'
 #' @param id Module's id.
 #' @param header Logical. Display or not \code{esquisse} header.
+#' @param container Container in which display the addin, 
+#'  default is to use \code{esquisseContainer}, see examples.
+#'  Use \code{NULL} for no container (behavior in versions <= 0.2.1).
+#'  Must be a \code{function}.
 #' @param choose_data Logical. Display or not the button to choose data.
+#' @param insert_code Logical, Display or not a button to insert the ggplot
+#'  code in the current user script (work only in RStudio).
 #' 
 #' @return A \code{reactiveValues} with 3 slots :
 #'  \itemize{
@@ -13,7 +20,9 @@
 #'   \item \strong{data} : \code{data.frame} used in plot (with filters applied).
 #'  }
 #' 
-#' @note For the module to display correctly, it is necessary to place it in a container with a fixed height.
+#' @note For the module to display correctly, it is necessary to place
+#'  it in a container with a fixed height. Since version >= 0.2.2, the 
+#'  container is added by default.
 #'
 #' @export
 #' 
@@ -25,9 +34,7 @@
 #' @importFrom shinyWidgets prettyToggle
 #'
 #' @examples 
-#' 
 #' if (interactive()) {
-#' 
 #' 
 #' ### Part of a Shiny app ###
 #' 
@@ -37,22 +44,17 @@
 #' ui <- fluidPage(
 #'   tags$h1("Use esquisse as a Shiny module"),
 #'   
-#'   # Force scroll bar to appear (otherwise hidden by esquisse)
-#'   tags$style("html, body {overflow: visible !important;"),
-#'   
 #'   radioButtons(
 #'     inputId = "data", 
 #'     label = "Data to use:", 
 #'     choices = c("iris", "mtcars"),
 #'     inline = TRUE
 #'   ),
-#'   tags$div(
-#'     style = "height: 700px;", # needs to be in fixed height container
-#'     esquisserUI(
-#'       id = "esquisse", 
-#'       header = FALSE, # dont display gadget title
-#'       choose_data = FALSE # dont display button to change data
-#'     )
+#'   esquisserUI(
+#'     id = "esquisse", 
+#'     header = FALSE, # dont display gadget title
+#'     choose_data = FALSE, # dont display button to change data,
+#'     container = esquisseContainer(height = "700px")
 #'   )
 #' )
 #' 
@@ -91,11 +93,37 @@
 #' )
 #' 
 #' 
-#' 
 #' ui <- fluidPage(
-#'   tags$div( # needs to be in fixed height container
-#'     style = "position: fixed; top: 0; bottom: 0; right: 0; left: 0;", 
-#'     esquisserUI(id = "esquisse")
+#'   esquisserUI(
+#'     id = "esquisse", 
+#'     container = esquisseContainer(fixed = TRUE)
+#'   )
+#' )
+#' 
+#' server <- function(input, output, session) {
+#'   
+#'   callModule(module = esquisserServer, id = "esquisse")
+#'   
+#' }
+#' 
+#' shinyApp(ui, server)
+#' 
+#' 
+#' 
+#' ## You can also use a vector of margins for the fixed argument,
+#' # useful if you have a navbar for example
+#' 
+#' ui <- navbarPage(
+#'   title = "My navbar app",
+#'   tabPanel(
+#'     title = "esquisse",
+#'     esquisserUI(
+#'       id = "esquisse", 
+#'       header = FALSE,
+#'       container = esquisseContainer(
+#'         fixed = c(50, 0, 0, 0)
+#'       )
+#'     )
 #'   )
 #' )
 #' 
@@ -109,10 +137,12 @@
 #' 
 #' }
 #' 
-esquisserUI <- function(id, header = TRUE, choose_data = TRUE) {
+esquisserUI <- function(id, header = TRUE,
+                        container = esquisseContainer(),
+                        choose_data = TRUE, 
+                        insert_code = FALSE) {
   
   ns <- NS(id)
-  
   
   box_title <- tags$div(
     class="gadget-title dreamrs-title-box",
@@ -121,15 +151,15 @@ esquisserUI <- function(id, header = TRUE, choose_data = TRUE) {
       class = "pull-right",
       miniTitleBarButton(inputId = ns("close"), label = "Close")
     ),
-    tags$div(
-      class = "pull-left",
-      if (isTRUE(choose_data) & isTRUE(header)) chooseDataUI(id = ns("choose-data"), class = "btn-sm")
-    )
+    if (isTRUE(choose_data) & isTRUE(header)) {
+      tags$div(
+        class = "pull-left",
+        chooseDataUI(id = ns("choose-data"), class = "btn-sm")
+      )
+    }
   )
     
-
-  ### addin
-  miniPage(
+  addin <- miniPage(
 
     # style sheet
     singleton(x = tagList(
@@ -185,7 +215,63 @@ esquisserUI <- function(id, header = TRUE, choose_data = TRUE) {
       )
     ),
 
-    chartControlsUI(id = ns("controls"))
+    chartControlsUI(id = ns("controls"), insert_code = insert_code)
   )
 
+  if (is.function(container)) {
+    addin <- container(addin)
+  }
+  return(addin)
 }
+
+#' @param width,height The width and height of the container, e.g. \code{'400px'},
+#'  or \code{'100\%'}; see \code{\link[htmltools]{validateCssUnit}}.
+#' @param fixed Use a fixed container, e.g. to use use esquisse full page.
+#'  If \code{TRUE}, width and height are ignored. Default to \code{FALSE}.
+#'  It's possible to use a vector of CSS unit of length 4 to specify the margins 
+#'  (top, right, bottom, left).
+#' 
+#' @rdname module-esquisse
+#' @export
+esquisseContainer <- function(width = "100%", height = "700px", fixed = FALSE) {
+  force(width)
+  force(height)
+  force(fixed)
+  function(...) {
+    if (identical(fixed, FALSE)) {
+      tag <- tags$div(
+        style = sprintf("width: %s;", validateCssUnit(width)),
+        style = sprintf("height: %s;", validateCssUnit(height)),
+        ...
+      )
+    } else {
+      if (identical(fixed, TRUE)) {
+        tag <- tags$div(
+          style = "position: fixed; top: 0; bottom: 0; right: 0; left: 0;",
+          ...
+        )
+      } else if (length(fixed) == 4) {
+        tag <- tags$div(
+          style = do.call(
+            sprintf,
+            c(list(
+              fmt = "position: fixed; top: %s; right: %s; bottom: %s; left: %s;"
+            ), lapply(fixed, validateCssUnit))
+          ),
+          ...
+        )
+      } else {
+        stop(
+          "fixed must be ever a logical TRUE/FALSE or a vector of length 4 of valid CSS unit.", 
+          call. = FALSE
+        )
+      }
+    }
+    tagList(
+      singleton(tags$head(
+        tags$style("html, body {overflow: visible !important;")
+      )), tag
+    )
+  }
+}
+

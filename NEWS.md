@@ -1,3 +1,30 @@
+# esquisse 0.2.2
+
+* Added `esquisseContainer` to better integrate esquisse module in a shiny application.
+* New functions `colorPicker` and `palettePicker` to select a color or a palette (this is the select control used in the main addin).
+
+
+## Breaking changes
+
+    * When using esquisse module into a shiny, it's not necessary anymore to put `esquisseUI` into a container, one is now added via argument `esquisseUI(container = ...)` :
+
+    ```R
+    # old
+    tags$div(
+      style = "height: 700px;",
+      esquisserUI(
+        id = "esquisse"
+      )
+    )
+    
+    # new 
+    esquisserUI(
+      id = "esquisse", 
+      container = esquisseContainer(height = "700px")
+    )
+    ```
+
+
 # esquisse 0.2.1
 
 * Fix bug when adding smooth line (missing import for `geom_smooth`).

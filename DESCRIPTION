@@ -1,7 +1,7 @@
 Package: esquisse
 Type: Package
 Title: Explore and Visualize Your Data Interactively
-Version: 0.2.1
+Version: 0.2.2
 Authors@R: c(person("Fanny", "Meyer", email = "fanny.meyer@dreamrs.fr", role = c("aut")),
   person("Victor", "Perrier", email = "victor.perrier@dreamrs.fr", role = c("aut", "cre")),
   person("Ian", "Carroll", comment = "Facets support", role = "ctb"))
@@ -20,10 +20,10 @@ Imports: miniUI, rstudioapi, shiny (>= 1.0.0), htmltools, jsonlite,
 Suggests: officer, rvg, rio, DT, testthat (>= 2.1.0), knitr
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2019-07-01 08:22:21 UTC; perri
+Packaged: 2019-08-22 13:13:12 UTC; perri
 Author: Fanny Meyer [aut],
   Victor Perrier [aut, cre],
   Ian Carroll [ctb] (Facets support)
 Maintainer: Victor Perrier <victor.perrier@dreamrs.fr>
 Repository: CRAN
-Date/Publication: 2019-07-01 08:40:07 UTC
+Date/Publication: 2019-08-22 13:30:02 UTC
