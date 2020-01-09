@@ -21,92 +21,7 @@
 #' @importFrom htmltools tagList singleton tags
 #' @importFrom shiny NS uiOutput
 #'
-#' @examples
-#' if (interactive()) {
-#' 
-#' library(shiny)
-#' library(shinyWidgets)
-#' library(ggplot2)
-#' library(esquisse)
-#' 
-#' 
-#' ui <- fluidPage(
-#'   tags$h2("Filter data.frame"),
-#'   
-#'   radioButtons(
-#'     inputId = "dataset", 
-#'     label = "Data:",
-#'     choices = c(
-#'       "iris", "mtcars", "economics", 
-#'       "midwest", "mpg", "msleep", "diamonds",
-#'       "faithfuld", "txhousing"
-#'     ),
-#'     inline = TRUE
-#'   ),
-#'   
-#'   fluidRow(
-#'     column(
-#'       width = 3,
-#'       filterDF_UI("filtering")
-#'     ),
-#'     column(
-#'       width = 9,
-#'       progressBar(
-#'         id = "pbar", value = 100, 
-#'         total = 100, display_pct = TRUE
-#'       ),
-#'       DT::dataTableOutput(outputId = "table"),
-#'       tags$p("Code dplyr:"),
-#'       verbatimTextOutput(outputId = "code_dplyr"),
-#'       tags$p("Expression:"),
-#'       verbatimTextOutput(outputId = "code"),
-#'       tags$p("Filtered data:"),
-#'       verbatimTextOutput(outputId = "res_str")
-#'     )
-#'   )
-#' )
-#' 
-#' server <- function(input, output, session) {
-#'   
-#'   data <- reactive({
-#'     get(input$dataset)
-#'   })
-#'   
-#'   res_filter <- callModule(
-#'     module = filterDF, 
-#'     id = "filtering", 
-#'     data_table = data,
-#'     data_name = reactive(input$dataset)
-#'   )
-#'   
-#'   observeEvent(res_filter$data_filtered(), {
-#'     updateProgressBar(
-#'       session = session, id = "pbar", 
-#'       value = nrow(res_filter$data_filtered()), total = nrow(data())
-#'     )
-#'   })
-#'   
-#'   output$table <- DT::renderDT({
-#'     res_filter$data_filtered()
-#'   }, options = list(pageLength = 5))
-#'   
-#'   
-#'   output$code_dplyr <- renderPrint({
-#'     res_filter$code$dplyr
-#'   })
-#'   output$code <- renderPrint({
-#'     res_filter$code$expr
-#'   })
-#'   
-#'   output$res_str <- renderPrint({
-#'     str(res_filter$data_filtered())
-#'   })
-#'   
-#' }
-#' 
-#' shinyApp(ui, server)
-#' 
-#' }
+#' @example examples/filterDF.R
 filterDF_UI <- function(id, show_nrow = TRUE) {
   ns <- NS(id)
   tagList(
@@ -127,6 +42,10 @@ filterDF_UI <- function(id, show_nrow = TRUE) {
 #'  \code{character} vector of variable to use for filters.
 #' @param data_name \code{\link[shiny]{reactive}} function returning a
 #'  \code{character} string representing \code{data_table} name.
+#' @param label_nrow Text to display before the number of rows of filtered data / source data.
+#' @param drop_ids Drop columns containing more than 90\% of unique values, or than 50 distinct values.
+#' @param picker Use  \code{\link[shinyWidgets:pickerInput]{shinyWidgets::pickerInput}}
+#'  instead of  \code{\link[shiny:selectInput]{shiny::selectizeInput}} (default).
 #' 
 #' 
 #' @rdname module-filterDF
@@ -138,24 +57,32 @@ filterDF_UI <- function(id, show_nrow = TRUE) {
 filterDF <- function(input, output, session, 
                      data_table = reactive(), 
                      data_vars = shiny::reactive(NULL),
-                     data_name = reactive("data")) {
+                     data_name = reactive("data"),
+                     label_nrow = "Number of rows:",
+                     drop_ids = TRUE,
+                     picker = FALSE) {
   
   ns <- session$ns
   jns <- function(x) paste0("#", ns(x))
   
   output$nrow <- renderUI({
-    tags$p("Number of rows: ", tags$b(nrow(data_filtered()) , "/", nrow(data_table())))
+    if (!is.null(label_nrow)) {
+      tags$p(label_nrow, tags$b(nrow(data_filtered()) , "/", nrow(data_table())))
+    }
   })
   
   rv_filters <- reactiveValues(mapping = NULL, mapping_na = NULL)
   rv_code <- reactiveValues(expr = NULL, dplyr = NULL)
   
-  observeEvent(data_table(), {
+  observe({
     data <- data_table()
     vars <- data_vars()
     # req(nrow(data) > 0)
     removeUI(selector = jns("filters_inputs"), immediate = TRUE)
-    filters <- create_filters(data = data, vars = vars)
+    filters <- create_filters(
+      data = data, vars = vars, 
+      drop_ids = drop_ids, picker = picker
+    )
     insertUI(
       selector = jns("placeholder-filters"), 
       ui = tags$div(
@@ -174,7 +101,7 @@ filterDF <- function(input, output, session,
     filter_inputs <- lapply(
       X = rv_filters$mapping, 
       FUN = function(x) {
-        req(input[[x]])
+        # req(input[[x]])
         input[[x]]
       }
     )
@@ -216,30 +143,46 @@ filterDF <- function(input, output, session,
 #' @importFrom htmltools HTML tagList tags
 #' @importFrom shiny selectizeInput sliderInput
 #' @importFrom stats setNames
-create_filters <- function(data, vars = NULL, width = "100%", session = getDefaultReactiveDomain()) {
+#' @importFrom shinyWidgets pickerInput pickerOptions
+create_filters <- function(data, vars = NULL,
+                           drop_ids = TRUE,
+                           picker = FALSE,
+                           width = "100%", session = getDefaultReactiveDomain()) {
   ns <- session$ns
-  data <- drop_id(data)
   data <- drop_na(data)
+  if (isTRUE(drop_ids)) {
+    data <- drop_id(data)
+  }
   data <- dropListColumns(data)
-  if (is.null(vars)) 
+  if (is.null(vars)) {
     vars <- names(data)
-  filters_id <- paste0("filter_", sample.int(1e9, length(vars)))
+  } else {
+    vars <- intersect(names(data), vars)
+  }
+  # filters_id <- paste0("filter_", sample.int(1e9, length(vars)))
+  filters_id <- paste0("filter_", clean_string(vars))
   filters_id <- setNames(as.list(filters_id), vars)
   filters_na_id <- setNames(as.list(paste0("na_", filters_id)), vars)
   ui <- lapply(
     X = vars,
     FUN = function(variable) {
       var <- data[[variable]]
+      any_na <- anyNA(var)
       var <- var[!is.na(var)]
       id <- filters_id[[variable]]
+      tag_label <- if (any_na) {
+        tags$span(
+          tags$label(variable), HTML("&nbsp;&nbsp;"), 
+          na_filter(id = ns(paste0("na_", id)))
+        )
+      } else {
+        tags$span(tags$label(variable), HTML("&nbsp;&nbsp;"))
+      }
       if (inherits(x = var, what = c("numeric", "integer"))) {
         params <- find_range_step(var)
         tags$div(
           style = "position: relative;",
-          tags$span(
-            tags$label(variable), HTML("&nbsp;&nbsp;"), 
-            na_filter(id = ns(paste0("na_", id)))
-          ),
+          tag_label,
           set_slider_attr(sliderInput(
             inputId = ns(id), 
             min = params$min, 
@@ -254,10 +197,7 @@ create_filters <- function(data, vars = NULL, width = "100%", session = getDefau
         range_var <- range(var)
         tags$div(
           style = "position: relative;",
-          tags$span(
-            tags$label(variable), HTML("&nbsp;&nbsp;"), 
-            na_filter(id = ns(paste0("na_", id)))
-          ),
+          tag_label,
           set_slider_attr(sliderInput(
             inputId = ns(id), 
             min = min(var), 
@@ -270,23 +210,40 @@ create_filters <- function(data, vars = NULL, width = "100%", session = getDefau
       } else {
         values <- unique(as.character(var))
         values <- values[trimws(values) != ""]
-        tags$div(
-          style = "position: relative;",
-          class = if (length(values) > 15) "selectize-big",
-          tags$span(
-            tags$label(variable), HTML("&nbsp;&nbsp;"), 
-            na_filter(id = ns(paste0("na_", id))) 
-          ),
-          selectizeInput(
-            inputId = ns(id),
-            choices = values, 
-            selected = values, 
-            label = NULL,
-            multiple = TRUE, 
-            width = width,
-            options = list(plugins = list("remove_button"))
+        if (isTRUE(picker)) {
+          tags$div(
+            style = "position: relative;",
+            tag_label,
+            pickerInput(
+              inputId = ns(id),
+              choices = values, 
+              selected = values, 
+              label = NULL,
+              multiple = TRUE, 
+              width = width, 
+              options = pickerOptions(
+                actionsBox = TRUE, 
+                selectedTextFormat = "count", 
+                liveSearch = TRUE
+              )
+            )
           )
-        )
+        } else {
+          tags$div(
+            style = "position: relative;",
+            class = if (length(values) > 15) "selectize-big",
+            tag_label,
+            selectizeInput(
+              inputId = ns(id),
+              choices = values, 
+              selected = values, 
+              label = NULL,
+              multiple = TRUE, 
+              width = width,
+              options = list(plugins = list("remove_button"))
+            )
+          )
+        }
       }
     }
   )
@@ -337,32 +294,84 @@ make_expr_filter <- function(filters, filters_na, data, data_name) {
       values <- filters[[var]]
       nas <- filters_na[[var]]
       data_values <- data[[var]]
-      if (!match_class(values, data_values))
+      if (!is.null(values) & !match_class(values, data_values))
         return(NULL)
       values_expr <- NULL
       if (inherits(x = values, what = c("numeric", "integer"))) {
-        data_values <- find_range_step(data_values)$range
-        if (!isTRUE(all.equal(values, data_values))) {
-          values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2])
+        data_range <- find_range_step(data_values)$range
+        if (!isTRUE(all.equal(values, data_range))) {
+          if (isTRUE(nas)) {
+            if (anyNA(data_values)) {
+              values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2] | is.na(!!sym(var)))
+            } else {
+              values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2])
+            }
+          } else {
+            if (anyNA(data_values)) {
+              values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2] & !is.na(!!sym(var)))
+            } else {
+              values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2])
+            }
+          }
         }
       } else if (inherits(x = values, what = c("Date", "POSIXct"))) {
         values <- format(values)
-        data_values <- range(data_values, na.rm = TRUE)
-        data_values <- format(data_values)
-        if (!identical(values, data_values)) {
-          values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2])
+        data_range <- range(data_values, na.rm = TRUE)
+        data_range <- format(data_range)
+        if (!identical(values, data_range)) {
+          if (isTRUE(nas)) {
+            if (anyNA(data_values)) {
+              values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2] | is.na(!!sym(var)))
+            } else {
+              values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2])
+            }
+          } else {
+            if (anyNA(data_values)) {
+              values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2] & !is.na(!!sym(var)))
+            } else {
+              values_expr <- expr(!!sym(var) >= !!values[1] & !!sym(var) <= !!values[2])
+            }
+          }
         }
       } else {
         data_values <- unique(as.character(data_values))
         if (!identical(sort(values), sort(data_values))) {
-          if (length(values) <= length(data_values)/2) {
-            values_expr <- expr(!!sym(var) %in% !!values)
+          if (length(values) == 0) {
+            if (isTRUE(nas)) {
+              values_expr <- expr(is.na(!!sym(var)))
+            } else {
+              values_expr <- expr(!(!!sym(var) %in% !!data_values[!is.na(data_values)]) & !is.na(!!sym(var)))
+            }
           } else {
-            values_expr <- expr(!(!!sym(var) %in% !!setdiff(data_values, values)))
+            if (length(values) <= length(data_values)/2) {
+              if (isTRUE(nas)) {
+                if (anyNA(data_values)) {
+                  values_expr <- expr(!!sym(var) %in% !!values | is.na(!!sym(var)))
+                } else {
+                  values_expr <- expr(!!sym(var) %in% !!values)
+                }
+              } else {
+                values_expr <- expr(!!sym(var) %in% !!values)
+              }
+            } else {
+              if (isTRUE(nas)) {
+                if (anyNA(data_values)) {
+                  values_expr <- expr(!(!!sym(var) %in% !!setdiff(data_values[!is.na(data_values)], values)) | is.na(!!sym(var)))
+                } else {
+                  values_expr <- expr(!(!!sym(var) %in% !!setdiff(data_values[!is.na(data_values)], values)))
+                }
+              } else {
+                if (anyNA(data_values)) {
+                  values_expr <- expr(!(!!sym(var) %in% !!setdiff(data_values[!is.na(data_values)], values)) & !is.na(!!sym(var)))
+                } else {
+                  values_expr <- expr(!(!!sym(var) %in% !!setdiff(data_values[!is.na(data_values)], values)))
+                }
+              }
+            }
           }
         }
       }
-      if (is.null(values_expr) & !isTRUE(nas)) {
+      if (is.null(values_expr) & !isTRUE(nas) & anyNA(data_values)) {
         expr(!is.na(!!sym(var)))
       } else {
         values_expr

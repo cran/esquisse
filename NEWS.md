@@ -1,12 +1,23 @@
+# esquisse 0.2.3
+
+* New argument `disable_filters` in `esquisserUI()` to disable the ability to filter data.
+* Enable bookmarking for module `filterDF`.
+* `filterDF()` module handle missing values correctly.
+* `filterDF()` has two new arguments : `drop_ids` : logical, drop or not column with only unique values, `picker` allow to use `shinyWidgets::pickerInput`.
+* Code generated : no more affectation in {dplyr} code, a pipe is used to send code to {ggplot2} (mentioned in [#79](https://github.com/dreamRs/esquisse/issues/79))
+
+
+
 # esquisse 0.2.2
 
-* Added `esquisseContainer` to better integrate esquisse module in a shiny application.
-* New functions `colorPicker` and `palettePicker` to select a color or a palette (this is the select control used in the main addin).
+* Added `esquisseContainer()` to better integrate esquisse module in a shiny application.
+* New functions `colorPicker()` and `palettePicker()` to select a color or a palette (this is the select control used in the main addin).
+* New argument `insert_code` in `esquisserUI()` to hide "Insert into script button".
 
 
 ## Breaking changes
 
-    * When using esquisse module into a shiny, it's not necessary anymore to put `esquisseUI` into a container, one is now added via argument `esquisseUI(container = ...)` :
+* When using esquisse module into a shiny, it's not necessary anymore to put `esquisseUI` into a container, one is now added via argument `esquisseUI(container = ...)` :
 
     ```R
     # old

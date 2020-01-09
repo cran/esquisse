@@ -31,9 +31,11 @@ dropNullsOrEmpty <- function(x) {
 
 
 # quickly clean a string
-#' @importFrom stringi stri_trans_general stri_replace_all_regex
+#' @importFrom stringi stri_trans_general stri_trans_tolower stri_replace_all_regex
 clean_string <- function(str) {
   str <- stri_trans_general(str = str, id = "Latin-ASCII")
+  str <- stri_trans_tolower(str)
+  str <- make.unique(str)
   str <- stri_replace_all_regex(str = str, pattern = "[^a-zA-Z0-9_]+", replacement = "_")
   return(str)
 }
@@ -244,14 +246,6 @@ dropListColumns <- function(x) {
 col2Hex <- function(col) {
   mat <- grDevices::col2rgb(col, alpha = TRUE)
   grDevices::rgb(mat[1, ]/255, mat[2, ]/255, mat[3,]/255)
-}
-
-
-get_brewer_pal <- function(name) {
-  bpi <- RColorBrewer::brewer.pal.info
-  maxn <- bpi[rownames(bpi) %in% name, ]
-  maxn <- maxn$maxcolors
-  brewer.pal(n = maxn, name = name)
 }
 
 

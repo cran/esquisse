@@ -7,11 +7,23 @@
 \alias{esquisseContainer}
 \title{Esquisse Shiny module}
 \usage{
-esquisserServer(input, output, session, data = NULL,
-  dataModule = c("GlobalEnv", "ImportFile"), sizeDataModule = "m")
+esquisserServer(
+  input,
+  output,
+  session,
+  data = NULL,
+  dataModule = c("GlobalEnv", "ImportFile"),
+  sizeDataModule = "m"
+)
 
-esquisserUI(id, header = TRUE, container = esquisseContainer(),
-  choose_data = TRUE, insert_code = FALSE)
+esquisserUI(
+  id,
+  header = TRUE,
+  container = esquisseContainer(),
+  choose_data = TRUE,
+  insert_code = FALSE,
+  disable_filters = FALSE
+)
 
 esquisseContainer(width = "100\%", height = "700px", fixed = FALSE)
 }
@@ -39,6 +51,8 @@ Must be a \code{function}.}
 
 \item{insert_code}{Logical, Display or not a button to insert the ggplot
 code in the current user script (work only in RStudio).}
+
+\item{disable_filters}{Logical. Disable the menu allowing to filter data used.}
 
 \item{width, height}{The width and height of the container, e.g. \code{'400px'},
 or \code{'100\%'}; see \code{\link[htmltools]{validateCssUnit}}.}
