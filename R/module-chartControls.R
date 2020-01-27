@@ -446,6 +446,11 @@ controls_appearance <- function(ns) {
   pals <- get_palettes()
 
   tagList(
+    
+    tags$style(
+      ".bootstrap-select .dropdown-menu li a span.text { display: block !important; }"
+    ),
+    
     tags$div(
       id = ns("controls-spectrum"), style = "display: block;",
       spectrumInput(
@@ -461,15 +466,16 @@ controls_appearance <- function(ns) {
         inputId = ns("palette"), 
         label = "Choose a palette:", 
         choices = pals$choices,
-        textColor = pals$textColor
+        textColor = pals$textColor,
+        pickerOpts = list(container = "body")
       )
     ),
     pickerInput(
       inputId = ns("theme"),
       label = "Theme:",
       choices = themes,
-      selected = "minimal",
-      options = list(size = 10),
+      selected = getOption("esquisse.default.theme"),
+      options = list(size = 10, container = "body"),
       width = "100%"
     ),
     tags$script(

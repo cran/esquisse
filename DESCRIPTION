@@ -1,10 +1,10 @@
 Package: esquisse
 Type: Package
 Title: Explore and Visualize Your Data Interactively
-Version: 0.2.3
-Authors@R: c(person("Fanny", "Meyer", email = "fanny.meyer@dreamrs.fr", role = c("aut")),
+Version: 0.3.0
+Authors@R: c(person("Fanny", "Meyer", role = c("aut")),
   person("Victor", "Perrier", email = "victor.perrier@dreamrs.fr", role = c("aut", "cre")),
-  person("Ian", "Carroll", comment = "Facets support", role = "ctb"))
+  person("Ian", "Carroll", comment = "Faceting support", role = "ctb"))
 Description: A 'shiny' gadget to create 'ggplot2' charts interactively with drag-and-drop to map your variables.
     You can quickly visualize your data accordingly to their type, export to 'PNG' or 'PowerPoint',
     and retrieve the code to reproduce the chart.
@@ -15,15 +15,16 @@ Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.0.2
 Imports: miniUI, rstudioapi, shiny (>= 1.0.0), htmltools, jsonlite,
-        shinyWidgets (>= 0.4.1), ggplot2 (>= 3.0.0), ggthemes,
-        hrbrthemes, scales, stringi, rlang (>= 0.3.1), grDevices
-Suggests: officer, rvg, rio, DT, testthat (>= 2.1.0), knitr
+        shinyWidgets (>= 0.4.1), ggplot2 (>= 3.0.0), scales, stringi,
+        rlang (>= 0.3.1), grDevices
+Suggests: officer, rvg, rio, DT, testthat (>= 2.1.0), knitr, ggthemes,
+        hrbrthemes
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2020-01-08 09:32:03 UTC; perri
+Packaged: 2020-01-27 17:09:24 UTC; perri
 Author: Fanny Meyer [aut],
   Victor Perrier [aut, cre],
-  Ian Carroll [ctb] (Facets support)
+  Ian Carroll [ctb] (Faceting support)
 Maintainer: Victor Perrier <victor.perrier@dreamrs.fr>
 Repository: CRAN
-Date/Publication: 2020-01-09 15:40:02 UTC
+Date/Publication: 2020-01-27 17:40:03 UTC
