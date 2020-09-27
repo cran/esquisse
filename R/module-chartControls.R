@@ -9,10 +9,12 @@
 #' @noRd
 #'
 #' @importFrom shinyWidgets dropdown
-#' @importFrom htmltools tags tagList
+#' @importFrom htmltools tags tagList HTML
 #' @importFrom shiny icon checkboxInput
 #'
-chartControlsUI <- function(id, insert_code = FALSE, disable_filters = FALSE) {
+chartControlsUI <- function(id, 
+                            insert_code = FALSE, 
+                            disable_filters = FALSE) {
 
   # Namespace
   ns <- NS(id)
@@ -65,9 +67,17 @@ chartControlsUI <- function(id, insert_code = FALSE, disable_filters = FALSE) {
       icon = icon("code"), 
       status = "default btn-controls"
     ),
-    tags$script("$('.sw-dropdown').addClass('btn-group-charter');"),
-    tags$script(HTML("$('.sw-dropdown > .btn').addClass('btn-charter');")),
-    tags$script("$('#sw-content-filterdrop').click(function (e) {e.stopPropagation();});"),
+    # tags$script("$('.sw-dropdown').addClass('btn-group-charter');"),
+    # tags$script(HTML("$('.sw-dropdown > .btn').addClass('btn-charter');")),
+    # tags$script("$('#sw-content-filterdrop').click(function (e) {e.stopPropagation();});"),
+    tags$div(
+      style = "display: none;",
+      checkboxInput(
+        inputId = ns("disable_filters"), 
+        label = NULL, 
+        value = isTRUE(disable_filters)
+      )
+    ),
     useShinyUtils()
   )
 }
@@ -94,20 +104,39 @@ chartControlsUI <- function(id, insert_code = FALSE, disable_filters = FALSE) {
 #' @noRd
 #'
 #' @importFrom shiny observeEvent reactiveValues reactiveValuesToList
-#'  downloadHandler renderUI reactive
+#'  downloadHandler renderUI reactive updateTextInput showNotification
 #' @importFrom rstudioapi insertText getSourceEditorContext
 #' @importFrom htmltools tags tagList
 #' @importFrom stringi stri_replace_all
 #'
-chartControlsServer <- function(input, output, session, 
-                                type, data_table, data_name,
+chartControlsServer <- function(input, 
+                                output, 
+                                session, 
+                                type, 
+                                data_table, 
+                                data_name,
                                 ggplot_rv, 
                                 aesthetics = reactive(NULL),
-                                use_facet = shiny::reactive(FALSE), 
-                                use_transX = shiny::reactive(FALSE), 
-                                use_transY = shiny::reactive(FALSE)) {
+                                use_facet = reactive(FALSE), 
+                                use_transX = reactive(FALSE), 
+                                use_transY = reactive(FALSE)) {
 
   ns <- session$ns
+  
+  
+  # Reset labs ----
+  
+  observeEvent(data_table(), {
+    updateTextInput(session = session, inputId = "labs_title", value = character(0))
+    updateTextInput(session = session, inputId = "labs_subtitle", value = character(0))
+    updateTextInput(session = session, inputId = "labs_caption", value = character(0))
+    updateTextInput(session = session, inputId = "labs_x", value = character(0))
+    updateTextInput(session = session, inputId = "labs_y", value = character(0))
+    updateTextInput(session = session, inputId = "labs_fill", value = character(0))
+    updateTextInput(session = session, inputId = "labs_color", value = character(0))
+    updateTextInput(session = session, inputId = "labs_size", value = character(0))
+  })
+  
   
   # Export ----
   
@@ -118,7 +147,7 @@ chartControlsServer <- function(input, output, session,
     content = function(file) {
       pngg <- try(ggsave(filename = file, plot = ggplot_rv$ggobj$plot, width = 12, height = 8, dpi = "retina"))
       if ("try-error" %in% class(pngg)) {
-        shiny::showNotification(ui = "Export to PNG failed...", type = "error")
+        shiny::showNotification(ui = "Export to PNG failed...", type = "error", id = paste("esquisse", sample.int(1e6, 1), sep = "-"))
       }
     }
   )
@@ -133,7 +162,7 @@ chartControlsServer <- function(input, output, session,
         ppt <- officer::add_slide(ppt, layout = "Title and Content", master = "Office Theme")
         ppt <- try(officer::ph_with(ppt, rvg::dml(ggobj = gg), location = officer::ph_location_type(type = "body")), silent = TRUE)
         if ("try-error" %in% class(ppt)) {
-          shiny::showNotification(ui = "Export to PowerPoint failed...", type = "error")
+          shiny::showNotification(ui = "Export to PowerPoint failed...", type = "error", id = paste("esquisse", sample.int(1e6, 1), sep = "-"))
         } else {
           tmp <- tempfile(pattern = "esquisse", fileext = ".pptx")
           print(ppt, target = tmp)
@@ -142,7 +171,7 @@ chartControlsServer <- function(input, output, session,
       } else {
         warn <- "Packages 'officer' and 'rvg' are required to use this functionality."
         warning(warn, call. = FALSE)
-        shiny::showNotification(ui = warn, type = "warning")
+        shiny::showNotification(ui = warn, type = "warning", paste("esquisse", sample.int(1e6, 1), sep = "-"))
       }
     }
   )
@@ -154,7 +183,7 @@ chartControlsServer <- function(input, output, session,
     context <- rstudioapi::getSourceEditorContext()
     code <- ggplot_rv$code
     code <- stri_replace_all(str = code, replacement = "+\n", fixed = "+")
-    if (!is.null(output_filter$code$expr)) {
+    if (!is.null(output_filter$code$expr) & !isTRUE(input$disable_filters)) {
       code_dplyr <- deparse(output_filter$code$dplyr, width.cutoff = 80L)
       code_dplyr <- paste(code_dplyr, collapse = "\n")
       nm_dat <- data_name()
@@ -175,7 +204,7 @@ chartControlsServer <- function(input, output, session,
   output$code <- renderUI({
     code <- ggplot_rv$code
     code <- stri_replace_all(str = code, replacement = "+\n", fixed = "+")
-    if (!is.null(output_filter$code$expr)) {
+    if (!is.null(output_filter$code$expr) & !isTRUE(input$disable_filters)) {
       code_dplyr <- deparse(output_filter$code$dplyr, width.cutoff = 80L)
       code_dplyr <- paste(code_dplyr, collapse = "\n")
       nm_dat <- data_name()
@@ -194,93 +223,36 @@ chartControlsServer <- function(input, output, session,
   
   observeEvent(aesthetics(), {
     aesthetics <- aesthetics()
-    if ("fill" %in% aesthetics) {
-      toggleDisplay(id = ns("controls-labs-fill"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-labs-fill"), display = "none")
-    }
-    if ("color" %in% aesthetics) {
-      toggleDisplay(id = ns("controls-labs-color"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-labs-color"), display = "none")
-    }
-    if ("size" %in% aesthetics) {
-      toggleDisplay(id = ns("controls-labs-size"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-labs-size"), display = "none")
-    }
+    toggleDisplay(id = ns("controls-labs-fill"), display = "fill" %in% aesthetics)
+    toggleDisplay(id = ns("controls-labs-color"), display = "color" %in% aesthetics)
+    toggleDisplay(id = ns("controls-labs-size"), display = "size" %in% aesthetics)
   })
   
   observeEvent(use_facet(), {
-    if (isTRUE(use_facet())) {
-      toggleDisplay(id = ns("controls-facet"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-facet"), display = "none")
-    }
+    toggleDisplay(id = ns("controls-facet"), display = isTRUE(use_facet()))
   })
   
   observeEvent(use_transX(), {
-    if (isTRUE(use_transX())) {
-      toggleDisplay(id = ns("controls-scale-trans-x"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-scale-trans-x"), display = "none")
-    }
+    toggleDisplay(id = ns("controls-scale-trans-x"), display = isTRUE(use_transX()))
   })
   
   observeEvent(use_transY(), {
-    if (isTRUE(use_transY())) {
-      toggleDisplay(id = ns("controls-scale-trans-y"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-scale-trans-y"), display = "none")
-    }
+    toggleDisplay(id = ns("controls-scale-trans-y"), display = isTRUE(use_transY()))
   })
 
   observeEvent(type$palette, {
-    if (isTRUE(type$palette)) {
-      toggleDisplay(id = ns("controls-palette"), display = "block")
-      toggleDisplay(id = ns("controls-spectrum"), display = "none")
-    } else {
-      toggleDisplay(id = ns("controls-palette"), display = "none")
-      toggleDisplay(id = ns("controls-spectrum"), display = "block")
-    }
+    toggleDisplay(id = ns("controls-palette"), display = isTRUE(type$palette))
+    toggleDisplay(id = ns("controls-spectrum"), display = !isTRUE(type$palette))
   })
   
   observeEvent(type$x, {
-    if (type$x %in% c("bar", "line", "area")) {
-      toggleDisplay(id = ns("controls-position"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-position"), display = "none")
-    }
-    if (type$x %in% "bar") {
-      toggleDisplay(id = ns("controls-flip"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-flip"), display = "none")
-    }
-    if (type$x %in% "histogram") {
-      toggleDisplay(id = ns("controls-histogram"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-histogram"), display = "none")
-    }
-    if (type$x %in% c("density", "violin")) {
-      toggleDisplay(id = ns("controls-density"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-density"), display = "none")
-    }
-    if (type$x %in% "point") {
-      toggleDisplay(id = ns("controls-scatter"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-scatter"), display = "none")
-    }
-    if (type$x %in% c("point", "line")) {
-      toggleDisplay(id = ns("controls-size"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-size"), display = "none")
-    }
-    if (type$x %in% "violin") {
-      toggleDisplay(id = ns("controls-violin"), display = "block")
-    } else {
-      toggleDisplay(id = ns("controls-violin"), display = "none")
-    }
+    toggleDisplay(id = ns("controls-position"), display = type$x %in% c("bar", "line", "area"))
+    toggleDisplay(id = ns("controls-flip"), display = type$x %in% "bar")
+    toggleDisplay(id = ns("controls-histogram"), display = type$x %in% "histogram")
+    toggleDisplay(id = ns("controls-density"), display = type$x %in% c("density", "violin"))
+    toggleDisplay(id = ns("controls-scatter"), display = type$x %in% "point")
+    toggleDisplay(id = ns("controls-size"), display = type$x %in% c("point", "line"))
+    toggleDisplay(id = ns("controls-violin"), display = type$x %in% "violin")
   })
   
   output_filter <- callModule(
@@ -332,10 +304,23 @@ chartControlsServer <- function(input, output, session,
     )
   })
   
+  #limits input
+  observe({
+    outin$limits <- list(
+      x = use_transX() & !anyNA(input$xlim),
+      xlim = input$xlim,
+      y = use_transY() & !anyNA(input$ylim),
+      ylim = input$ylim
+    )
+  })
+  
+  
   # facet input
   observe({
     outin$facet <- list(
-      scales = if (identical(input$facet_scales, "fixed")) NULL else input$facet_scales
+      scales = if (identical(input$facet_scales, "fixed")) NULL else input$facet_scales,
+      ncol = if (input$facet_ncol == 0) NULL else input$facet_ncol,
+      nrow = if (input$facet_nrow == 0) NULL else input$facet_nrow
     )
   })
   
@@ -351,7 +336,7 @@ chartControlsServer <- function(input, output, session,
   
   # coord input
   observe({
-    outin$coord <- if (input$flip) "flip" else NULL
+    outin$coord <- if (isTRUE(input$flip)) "flip" else NULL
   })
   
   # smooth input
@@ -385,8 +370,10 @@ chartControlsServer <- function(input, output, session,
   })
   
   observeEvent(output_filter$data_filtered(), {
-    outin$data <- output_filter$data_filtered()
-    outin$code <- output_filter$code
+    if(!isTRUE(input$disable_filters)){
+      outin$data <- output_filter$data_filtered()
+      outin$code <- output_filter$code
+    }
   })
 
   return(outin)
@@ -406,22 +393,22 @@ chartControlsServer <- function(input, output, session,
 controls_labs <- function(ns) {
   tags$div(
     class = "form-group",
-    textInput(inputId = ns("labs_title"), placeholder = "Title", label = NULL),
-    textInput(inputId = ns("labs_subtitle"), placeholder = "Subtitle", label = NULL),
-    textInput(inputId = ns("labs_caption"), placeholder = "Caption", label = NULL),
-    textInput(inputId = ns("labs_x"), placeholder = "X label", label = NULL),
-    textInput(inputId = ns("labs_y"), placeholder = "Y label", label = NULL),
+    textInput(inputId = ns("labs_title"), placeholder = "Title", label = "Title:"),
+    textInput(inputId = ns("labs_subtitle"), placeholder = "Subtitle", label = "Subtitle:"),
+    textInput(inputId = ns("labs_caption"), placeholder = "Caption", label = "Caption:"),
+    textInput(inputId = ns("labs_x"), placeholder = "X label", label = "X label:"),
+    textInput(inputId = ns("labs_y"), placeholder = "Y label", label = "Y label:"),
     tags$div(
       id = ns("controls-labs-fill"), style = "display: none;",
-      textInput(inputId = ns("labs_fill"), placeholder = "Fill label", label = NULL)
+      textInput(inputId = ns("labs_fill"), placeholder = "Fill label", label = "Fill label:")
     ),
     tags$div(
       id = ns("controls-labs-color"), style = "display: none;",
-      textInput(inputId = ns("labs_color"), placeholder = "Color label", label = NULL)
+      textInput(inputId = ns("labs_color"), placeholder = "Color label", label = "Color label:")
     ),
     tags$div(
       id = ns("controls-labs-size"), style = "display: none;",
-      textInput(inputId = ns("labs_size"), placeholder = "Size label", label = NULL)
+      textInput(inputId = ns("labs_size"), placeholder = "Size label", label = "Size label:")
     )
   )
 }
@@ -438,7 +425,7 @@ controls_labs <- function(ns) {
 #' @noRd
 #' @importFrom shiny icon
 #' @importFrom htmltools tagList tags
-#' @importFrom shinyWidgets colorSelectorInput pickerInput radioGroupButtons spectrumInput
+#' @importFrom shinyWidgets pickerInput radioGroupButtons spectrumInput
 controls_appearance <- function(ns) {
 
   themes <- get_themes()
@@ -505,9 +492,9 @@ controls_appearance <- function(ns) {
 #' @param ns Namespace from module
 #'
 #' @noRd
-#' @importFrom shiny sliderInput conditionalPanel selectInput
+#' @importFrom shiny sliderInput conditionalPanel selectInput numericInput
 #' @importFrom htmltools tagList tags
-#' @importFrom shinyWidgets materialSwitch prettyRadioButtons
+#' @importFrom shinyWidgets materialSwitch prettyRadioButtons numericRangeInput
 #'
 controls_params <- function(ns) {
   
@@ -527,7 +514,8 @@ controls_params <- function(ns) {
           inputId = ns("smooth_span"), 
           label = "Span:", 
           min = 0.1, max = 1, 
-          value = 0.75, step = 0.01
+          value = 0.75, step = 0.01, 
+          width = "100%"
         )
       ),
       materialSwitch(
@@ -543,7 +531,8 @@ controls_params <- function(ns) {
         inputId = ns("size"), 
         label = "Size:",
         min = 0.5, max = 3,
-        value = 1
+        value = 1, 
+        width = "100%"
       )
     ),
     tags$div(
@@ -556,6 +545,18 @@ controls_params <- function(ns) {
         choices = c("fixed", "free", "free_x", "free_y"),
         outline = TRUE, 
         icon = icon("check")
+      ),
+      sliderInput(
+        inputId = ns("facet_ncol"),
+        label = "Facet ncol:",
+        min = 0, max = 10,
+        value = 0, step = 1
+      ),
+      sliderInput(
+        inputId = ns("facet_nrow"),
+        label = "Facet nrow:",
+        min = 0, max = 10,
+        value = 0, step = 1
       )
     ),
     tags$div(
@@ -564,7 +565,8 @@ controls_params <- function(ns) {
         inputId = ns("bins"), 
         label = "Numbers of bins:", 
         min = 10, max = 100,
-        value = 30
+        value = 30, 
+        width = "100%"
       )
     ),
     tags$div(
@@ -581,20 +583,32 @@ controls_params <- function(ns) {
     ),
     tags$div(
       id = ns("controls-scale-trans-x"), style = "display: none;",
+      numericRangeInput(
+        inputId = ns("xlim"), 
+        label = "X-Axis limits (empty for none):",
+        value = c(NA, NA)
+      ),
       selectInput(
         inputId = ns("transX"), 
         label = "X-Axis transform:",
         selected = "identity", 
-        choices = scales_trans
+        choices = scales_trans, 
+        width = "100%"
       )
     ),
     tags$div(
       id = ns("controls-scale-trans-y"), style = "display: none;",
+      numericRangeInput(
+        inputId = ns("ylim"), 
+        label = "Y-Axis limits (empty for none):",
+        value = c(NA, NA)
+      ),
       selectInput(
         inputId = ns("transY"), 
         label = "Y-Axis transform:",
         selected = "identity", 
-        choices = scales_trans
+        choices = scales_trans, 
+        width = "100%"
       )
     ),
     tags$div(
@@ -603,7 +617,8 @@ controls_params <- function(ns) {
         inputId = ns("adjust"), 
         label = "Bandwidth adjustment:", 
         min = 0.2, max = 6, 
-        value = 1, step = 0.1
+        value = 1, step = 0.1, 
+        width = "100%"
       )
     ),
     tags$div(
@@ -717,6 +732,8 @@ get_colors <- function() {
 
 
 select_geom_controls <- function(x, geoms) {
+  if (length(x) < 1)
+    return("auto")
   if ("bar" %in% geoms & x %in% c("auto", "bar")) {
     "bar"
   } else if ("histogram" %in% geoms & x %in% c("auto", "histogram")) {

@@ -5,9 +5,10 @@
 #' user environment and select variable to use.
 #'
 #' @param id Module's id.
-#' @param label Button's label.
-#' @param icon Button's icon.
-#' @param ... Arguments passed to \code{\link{actionButton}}
+#' @param label Label for button, passed to \code{\link[shiny:actionButton]{actionButton}}.
+#' @param icon Icon to appears on the button, passed to \code{\link[shiny:actionButton]{actionButton}}.
+#' @param width Width of button, passed to \code{\link[shiny:actionButton]{actionButton}}.
+#' @param ... Other arguments passed to \code{\link[shiny:actionButton]{actionButton}}
 #'
 #' @return a \code{\link[shiny]{reactiveValues}} containing the data selected under slot \code{data}
 #' and the name of the selected \code{data.frame} under slot \code{name}.
@@ -19,7 +20,11 @@
 #' @importFrom shiny NS actionButton icon 
 #'
 #' @example examples/chooseData.R
-chooseDataUI <- function(id, label = "Data", icon = "database", ...) {
+chooseDataUI <- function(id,
+                         label = "Data",
+                         icon = "database",
+                         width = "100%",
+                         ...) {
   
   ns <- NS(id)
   
@@ -33,8 +38,11 @@ chooseDataUI <- function(id, label = "Data", icon = "database", ...) {
     ),
     useShinyUtils(),
     actionButton(
-      inputId = ns("changeData"), label = label,
-      icon = icon, width = "100%", ...
+      inputId = ns("changeData"),
+      label = label,
+      icon = icon,
+      width = width,
+      ...
     )
   )
 }
@@ -60,13 +68,17 @@ chooseDataUI <- function(id, label = "Data", icon = "database", ...) {
 #'
 #' @importFrom shiny showModal modalDialog observeEvent reactiveValues callModule observe icon
 #' @importFrom htmltools tags HTML
-chooseDataServer <- function(input, output, session, 
+chooseDataServer <- function(input,
+                             output,
+                             session, 
                              dataModule = c("GlobalEnv", "ImportFile"), 
-                             data = NULL, name = NULL, 
+                             data = NULL,
+                             name = NULL, 
                              selectVars = TRUE, 
                              selectedTypes = c("continuous", "discrete", "time"), 
                              coerceVars = FALSE, 
-                             launchOnStart = TRUE, size = "m") {
+                             launchOnStart = TRUE,
+                             size = "m") {
   
   dataModule <- match.arg(dataModule)
   datModUI <- switch(

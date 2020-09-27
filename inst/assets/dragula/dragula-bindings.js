@@ -5,10 +5,10 @@ $.extend(dragulaBinding, {
   },
   initialize: function initialize(el) {
     var $el = $(el);
-    
+
     var config = $(el).find('script[data-for="' + el.id + '"]');
     config = JSON.parse(config.html());
-    
+
     var opts = config.options;
 
     if (!opts.hasOwnProperty("removeOnSpill")) {
@@ -49,14 +49,15 @@ $.extend(dragulaBinding, {
           if (target !== null) {
             if (replaceIds.indexOf(target.id) >= 0) {
               $(target)
-                .children(".label-dragula")
+                .children(".dragula-block")
                 .remove();
             }
             target.appendChild(el);
           }
         } else {
           $(target)
-            .find("#" + $(el).attr("id"))
+            .find("#" + $(el).children().attr("id"))
+            .parent()
             .remove();
         }
         $el.trigger("change");
@@ -119,22 +120,37 @@ $.extend(dragulaBinding, {
     var $el = $(el);
     var config = $(el).find('script[data-for="' + el.id + '"]');
     config = JSON.parse(config.html());
+    var targetsContainer = config.targets;
+    var sourceContainer = config.source;
     if (data.hasOwnProperty("choices")) {
-      var targetsContainer = config.targets;
+      
       targetsContainer.forEach(function(element) {
         $("#" + element)
-          .children(".label-dragula")
+          .children(".dragula-block")
           .remove();
       });
-      var sourceContainer = config.source;
+      
       sourceContainer.forEach(function(element) {
         $("#" + element)
-          .children(".label-dragula")
+          .children(".dragula-block")
           .remove();
         $("#" + element).html(data.choices);
       });
-      $(el).trigger("change");
+      
     }
+    if (data.hasOwnProperty("selected")) {
+      
+      targetsContainer.forEach(function(element) {
+        console.log(element);
+        console.log(data.selected);
+        $("#" + element)
+          .children(".dragula-block")
+          .remove();
+        $("#" + element).html(data.selected[element]);
+      });
+      
+    }
+    $(el).trigger("change");
   },
   getRatePolicy: function getRatePolicy() {
     return {

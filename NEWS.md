@@ -1,8 +1,20 @@
+# esquisse 0.3.1
+
+* facet wrap displays by [@xiangnandang](https://github.com/xiangnandang)
+* facet_row and facet_col features to allow facet_grid call from ggplot2 by [@xiangnandang](https://github.com/xiangnandang)
+* x and y limits of the plots by [@xiangnandang](https://github.com/xiangnandang)
+* Check if data is null when changing datasets by [@trafficonese](https://github.com/trafficonese).
+* New function `updateDragulaInput()` to update `dragulaInput()` server side.
+* `dragulaInput()` has two new arguments: `ncolSource` and `ncolGrid` to create a grid layout with source and targets boxes.
+
+
+
 # esquisse 0.3.0
 
 * Fixed a bug in `dragulaInput` preventing to change variable in main addin.
 * `chooseDataServer()` has a new argument `selectedTypes` to set types of variables selected by default. [#95](https://github.com/dreamRs/esquisse/issues/95)
 * Packages [{ggthemes}](https://github.com/jrnold/ggthemes) and [{hrbrthemes}](https://github.com/hrbrmstr/hrbrthemes) are now in Suggests.
+
 
 
 # esquisse 0.2.3

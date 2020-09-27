@@ -44,7 +44,7 @@ esquisser <- function(data = NULL,
                       coerce_vars = getOption(x = "esquisse.coerceVars", default = TRUE),
                       disable_filters = getOption(x = "esquisse.disable_filters", default = FALSE),
                       viewer = getOption(x = "esquisse.viewer", default = "dialog")) {
-  
+  viewer <- match.arg(viewer, choices = c("dialog", "pane", "browser"))
   options("esquisse.coerceVars" = coerce_vars)
 
   res_data <- get_data(data, name = deparse(substitute(data)))
@@ -63,12 +63,18 @@ esquisser <- function(data = NULL,
   } else {
     inviewer <- dialogViewer(
       "C'est le temps que tu as perdu pour ta rose qui rend ta rose importante.",
-      width = 1000, height = 750
+      width = 1100, 
+      height = 750
     )
   }
 
   runGadget(
-    app = esquisserUI(id = "esquisse", container = NULL, insert_code = TRUE), 
+    app = esquisserUI(
+      id = "esquisse",
+      container = NULL, 
+      insert_code = TRUE,
+      disable_filters = disable_filters
+    ), 
     server = function(input, output, session) {
       callModule(
         module = esquisserServer, 

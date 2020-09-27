@@ -6,23 +6,29 @@
 \usage{
 dragulaInput(
   inputId,
+  label = NULL,
   sourceLabel,
   targetsLabels,
   targetsIds = NULL,
   choices = NULL,
   choiceNames = NULL,
   choiceValues = NULL,
+  selected = NULL,
   status = "primary",
   replace = FALSE,
   badge = TRUE,
+  ncolSource = "auto",
+  ncolGrid = NULL,
   dragulaOpts = list(),
   boxStyle = NULL,
   width = NULL,
-  height = "200px"
+  height = "100px"
 )
 }
 \arguments{
 \item{inputId}{The \code{input} slot that will be used to access the value.}
+
+\item{label}{Display label for the control, or \code{NULL} for no label.}
 
 \item{sourceLabel}{Label display in the source box}
 
@@ -45,6 +51,8 @@ choices must not be provided. The advantage of using both of these over a named
 list for choices is that choiceNames allows any type of UI object to be passed 
 through (tag objects, icons, HTML code, ...), instead of just simple text.}
 
+\item{selected}{Default selected values. Must be a \code{list} with \code{targetsIds} as names.}
+
 \item{status}{If choices are displayed into a Bootstrap label, you can use Bootstrap
 status to color them, or \code{NULL}.}
 
@@ -53,6 +61,10 @@ containing a choice, does the later be replaced by the new one ?}
 
 \item{badge}{Displays choices inside a Bootstrap badge. Use \code{FALSE}
 if you want to pass custom appearance with \code{choiceNames}.}
+
+\item{ncolSource}{Number of columns occupied by the source, default is \code{"auto"}, meaning full row.}
+
+\item{ncolGrid}{Number of columns used to place source and targets boxes, see examples.}
 
 \item{dragulaOpts}{Options passed to dragula JS library.}
 
@@ -72,35 +84,86 @@ Drag And Drop Input Widget
 The output server-side is a list with two slots: \code{source} and \code{targets}.
 }
 \examples{
-
-if (interactive()) {
-
-library("shiny")
-library("esquisse")
+library(shiny)
+library(esquisse)
 
 ui <- fluidPage(
   tags$h2("Demo dragulaInput"),
   tags$br(),
-  dragulaInput(
-    inputId = "dad",
-    sourceLabel = "Source",
-    targetsLabels = c("Target 1", "Target 2"),
-    choices = names(iris),
-    width = "400px"
-  ),
-  verbatimTextOutput(outputId = "result")
+  fluidRow(
+    column(
+      width = 6,
+      
+      dragulaInput(
+        inputId = "dad1",
+        label = "Default:",
+        sourceLabel = "Source",
+        targetsLabels = c("Target 1", "Target 2"),
+        choices = month.abb,
+        width = "100\%"
+      ),
+      verbatimTextOutput(outputId = "result1"),
+      
+      tags$br(),
+      
+      dragulaInput(
+        inputId = "dad3",
+        label = "On same row:",
+        sourceLabel = "Source",
+        targetsLabels = c("Target 1", "Target 2"),
+        choices = month.abb,
+        width = "100\%",
+        ncolSource = 1,
+        ncolGrid = 3
+      ),
+      verbatimTextOutput(outputId = "result3")
+    ),
+    
+    column(
+      width = 6,
+      dragulaInput(
+        inputId = "dad2",
+        label = "Two rows:",
+        sourceLabel = "Source",
+        targetsLabels = c("x", "y", "color", "fill", "size", "facet"),
+        choices = names(mtcars),
+        width = "100\%",
+        ncolGrid = 3
+      ),
+      verbatimTextOutput(outputId = "result2"),
+      
+      tags$br(),
+      
+      dragulaInput(
+        inputId = "dad4",
+        label = "Two rows not filled:",
+        sourceLabel = "Source",
+        targetsLabels = c("x", "y", "color", "fill", "size"),
+        choices = names(mtcars),
+        width = "100\%",
+        ncolGrid = 3
+      ),
+      verbatimTextOutput(outputId = "result4")
+    )
+  )
 )
 
 
 server <- function(input, output, session) {
   
-  output$result <- renderPrint(str(input$dad))
-
+  output$result1 <- renderPrint(str(input$dad1))
+  
+  output$result2 <- renderPrint(str(input$dad2))
+  
+  output$result3 <- renderPrint(str(input$dad3))
+  
+  output$result4 <- renderPrint(str(input$dad4))
+  
 }
 
-shinyApp(ui = ui, server = server)
+if (interactive())
+  shinyApp(ui = ui, server = server)
 
-}
 
 }
 \seealso{
