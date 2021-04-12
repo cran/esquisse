@@ -9,7 +9,11 @@ knitr::opts_chunk$set(
 #  library(shiny)
 #  library(esquisse)
 
-## -----------------------------------------------------------------------------
+## ----esquisse-module----------------------------------------------------------
+#  library(esquisse)
+#  library(shiny)
+#  library(ggplot2)
+#  
 #  ui <- fluidPage(
 #  
 #    titlePanel("Use esquisse as a Shiny module"),
@@ -18,24 +22,27 @@ knitr::opts_chunk$set(
 #      sidebarPanel(
 #        radioButtons(
 #          inputId = "data",
-#          label = "Data to use:",
-#          choices = c("iris", "mtcars"),
-#          inline = TRUE
+#          label = "Select data to use:",
+#          choices = c("mpg", "diamonds", "economics")
 #        )
 #      ),
 #      mainPanel(
 #        tabsetPanel(
 #          tabPanel(
 #            title = "esquisse",
-#            esquisserUI(
+#            esquisse_ui(
 #              id = "esquisse",
-#              header = FALSE, # dont display gadget title
-#              choose_data = FALSE # dont display button to change data
+#              header = FALSE # dont display gadget title
 #            )
 #          ),
 #          tabPanel(
 #            title = "output",
-#            verbatimTextOutput("module_out")
+#            tags$b("Code:"),
+#            verbatimTextOutput("code"),
+#            tags$b("Filters:"),
+#            verbatimTextOutput("filters"),
+#            tags$b("Data:"),
+#            verbatimTextOutput("data")
 #          )
 #        )
 #      )
@@ -47,49 +54,71 @@ knitr::opts_chunk$set(
 #  
 #    data_r <- reactiveValues(data = iris, name = "iris")
 #  
-#    observeEvent(input$data, {
-#      if (input$data == "iris") {
-#        data_r$data <- iris
-#        data_r$name <- "iris"
-#      } else {
-#        data_r$data <- mtcars
-#        data_r$name <- "mtcars"
-#      }
+#    observe({
+#      data_r$data <- get(input$data)
+#      data_r$name <- input$data
 #    })
 #  
-#    result <- callModule(
-#      module = esquisserServer,
+#    results <- esquisse_server(
 #      id = "esquisse",
-#      data = data_r
+#      data_rv = data_r
 #    )
 #  
-#    output$module_out <- renderPrint({
-#      str(reactiveValuesToList(result))
+#    output$code <- renderPrint({
+#      results$code_plot
+#    })
+#  
+#    output$filters <- renderPrint({
+#      results$code_filters
+#    })
+#  
+#    output$data <- renderPrint({
+#      str(results$data)
 #    })
 #  
 #  }
 #  
 #  shinyApp(ui, server)
 
-## -----------------------------------------------------------------------------
-#  ?`module-filterDF`
+## ----save-ggplot--------------------------------------------------------------
+#  function(input, output, session) {
 #  
-#  run_module("filterDF")
-
-## -----------------------------------------------------------------------------
-#  ?`module-chooseData`
+#    observeEvent(input$save, { # actionButton to trigger modal
+#      save_ggplot_modal("ID", "Save plot") # launch modal
+#    })
+#    save_ggplot_server("ID", rv) # rv is a reactiValues with a slot 'plot'
 #  
-#  run_module("chooseData")
+#  }
 
-## -----------------------------------------------------------------------------
-#  run_module("chooseData2")
-
-## -----------------------------------------------------------------------------
-#  ?`module-coerce`
+## ----render-ggplot------------------------------------------------------------
+#  library(shiny)
+#  library(ggplot2)
+#  library(esquisse)
 #  
-#  run_module("coerce")
+#  
+#  ui <- fluidPage(
+#    tags$h2("ggplot output"),
+#    selectInput("var", "Variable:", names(economics)[-1]),
+#    ggplot_output("MYID", width = "600px")
+#  )
+#  
+#  server <- function(input, output, session) {
+#  
+#    render_ggplot("MYID", {
+#      ggplot(economics) +
+#        geom_line(aes(date, !!sym(input$var))) +
+#        theme_minimal() +
+#        labs(
+#          title = "A cool chart made with ggplot2",
+#          subtitle = "that you can export in various format"
+#        )
+#    })
+#  }
+#  
+#  if (interactive())
+#    shinyApp(ui, server)
 
-## -----------------------------------------------------------------------------
+## ----dragula-input------------------------------------------------------------
 #  ui <- fluidPage(
 #    tags$h2("Demo dragulaInput"),
 #    tags$br(),
@@ -112,7 +141,7 @@ knitr::opts_chunk$set(
 #  
 #  shinyApp(ui = ui, server = server)
 
-## -----------------------------------------------------------------------------
+## ----drop-input---------------------------------------------------------------
 #  ui <- fluidPage(
 #    tags$h2("Drop Input"),
 #    dropInput(
@@ -140,7 +169,7 @@ knitr::opts_chunk$set(
 #  
 #  shinyApp(ui, server)
 
-## -----------------------------------------------------------------------------
+## ----color-picker-------------------------------------------------------------
 #  ui <- fluidPage(
 #    tags$h2("Color Picker"),
 #    colorPicker(
@@ -160,7 +189,7 @@ knitr::opts_chunk$set(
 #  
 #  shinyApp(ui, server)
 
-## -----------------------------------------------------------------------------
+## ----palette-picker-----------------------------------------------------------
 #  library(scales)
 #  ui <- fluidPage(
 #    tags$h2("Palette Picker"),
