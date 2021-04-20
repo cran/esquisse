@@ -1,3 +1,11 @@
+# esquisse 1.0.1
+
+* Corrected a bug when using `sf` objects (fix [#147](https://github.com/dreamRs/esquisse/issues/147)).
+* Use `pkg::data` notation if data used in addin comes from a package (fix [#150](https://github.com/dreamRs/esquisse/issues/150)).
+* Corrected a bug when labs' input controls when the panel is disabled (fix [#148](https://github.com/dreamRs/esquisse/issues/148))
+
+
+
 # esquisse 1.0.0
 
 * Ability to select aesthetics parameters to use

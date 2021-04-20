@@ -1,7 +1,7 @@
 Package: esquisse
 Type: Package
 Title: Explore and Visualize Your Data Interactively
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: c(person("Fanny", "Meyer", role = c("aut")),
   person("Victor", "Perrier", email = "victor.perrier@dreamrs.fr", role = c("aut", "cre")),
   person("Ian", "Carroll", comment = "Faceting support", role = "ctb"),
@@ -17,15 +17,15 @@ RoxygenNote: 7.1.1
 Imports: datamods, rstudioapi, shiny (>= 1.1.0), htmltools, jsonlite,
         shinyWidgets (>= 0.6.0), ggplot2 (>= 3.0.0), scales, rlang (>=
         0.3.1), grDevices, styler
-Suggests: officer, rvg, rio, testthat (>= 2.1.0), knitr, ggthemes,
-        hrbrthemes
+Suggests: officer, rvg, rio, testthat (>= 2.1.0), knitr, rmarkdown,
+        ggthemes, hrbrthemes
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2021-04-12 08:45:02 UTC; perri
+Packaged: 2021-04-20 08:53:47 UTC; perri
 Author: Fanny Meyer [aut],
   Victor Perrier [aut, cre],
   Ian Carroll [ctb] (Faceting support),
   Xiangnan Dang [ctb] (Facets rows and cols, X/Y limits)
 Maintainer: Victor Perrier <victor.perrier@dreamrs.fr>
 Repository: CRAN
-Date/Publication: 2021-04-12 09:10:02 UTC
+Date/Publication: 2021-04-20 09:50:14 UTC

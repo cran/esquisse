@@ -169,7 +169,7 @@ controls_ui <- function(id,
 #' @noRd
 #'
 #' @importFrom shiny observeEvent reactiveValues reactiveValuesToList
-#'  downloadHandler renderUI reactive updateTextInput showNotification callModule updateSliderInput
+#'  downloadHandler renderUI reactive updateTextInput showNotification callModule updateSliderInput debounce
 #' @importFrom rstudioapi insertText getSourceEditorContext
 #' @importFrom htmltools tags tagList
 #' @importFrom datamods filter_data_server
@@ -278,7 +278,7 @@ controls_server <- function(id,
         toggleDisplay(id = ns("controls-histogram"), display = type$x %in% "histogram")
         toggleDisplay(id = ns("controls-density"), display = type$x %in% c("density", "violin"))
         toggleDisplay(id = ns("controls-scatter"), display = type$x %in% "point")
-        toggleDisplay(id = ns("controls-size"), display = type$x %in% c("point", "line", "step"))
+        toggleDisplay(id = ns("controls-size"), display = type$x %in% c("point", "line", "step", "sf"))
         toggleDisplay(id = ns("controls-violin"), display = type$x %in% "violin")
         
         if (type$x %in% c("point")) {
@@ -293,7 +293,11 @@ controls_server <- function(id,
         data = reactive({
           req(data_table())
           req(names(data_table()))
-          data_table()
+          if (isTRUE(input$disable_filters)) {
+            return(NULL)
+          } else {
+            data_table()
+          }
         }),
         name = data_name
       )
@@ -323,13 +327,13 @@ controls_server <- function(id,
       })
       
       # labs input
-      observe({
+      labs_r <- debounce(reactive({
         asth <- names(aesthetics())
-        labs_fill <- ifelse("fill" %in% asth, input$labs_fill, "")
-        labs_color <- ifelse("color" %in% asth, input$labs_color, "")
-        labs_size <- ifelse("size" %in% asth, input$labs_size, "")
-        labs_shape <- ifelse("shape" %in% asth, input$labs_shape, "")
-        outputs$labs <- list(
+        labs_fill <- `if`(isTRUE("fill" %in% asth), input$labs_fill, "")
+        labs_color <- `if`(isTRUE("color" %in% asth), input$labs_color, "")
+        labs_size <- `if`(isTRUE("size" %in% asth), input$labs_size, "")
+        labs_shape <- `if`(isTRUE("shape" %in% asth), input$labs_shape, "")
+        list(
           x = input$labs_x %empty% NULL,
           y = input$labs_y %empty% NULL,
           title = input$labs_title %empty% NULL,
@@ -340,6 +344,9 @@ controls_server <- function(id,
           size = labs_size %empty% NULL,
           shape = labs_shape %empty% NULL
         )
+      }), millis = 1000)
+      observe({
+        outputs$labs <- labs_r()
       })
       
       # Colors input
@@ -354,9 +361,11 @@ controls_server <- function(id,
         }
         return(character(0))
       }))
+      colors_r_d <- debounce(colors_r, millis = 1000)
       observe({
-        outputs$colors <- colors_r()
+        outputs$colors <- colors_r_d()
       })
+      
       
       # limits input
       observe({
@@ -445,7 +454,7 @@ controls_server <- function(id,
       })
       
       observeEvent(output_filter$filtered(), {
-        if(!isTRUE(input$disable_filters)){
+        if (!isTRUE(input$disable_filters)) {
           outputs$data <- output_filter$filtered()
           outputs$code <- output_filter$code()
         }
@@ -1032,6 +1041,8 @@ select_geom_controls <- function(x, geoms) {
     "area"
   } else if ("violin" %in% geoms & x %in% c("violin")) {
     "violin"
+  } else if ("sf" %in% geoms & x %in% c("sf")) {
+    "sf"
   } else {
     "auto"
   }
