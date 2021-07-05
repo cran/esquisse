@@ -355,6 +355,8 @@ genId <- function(bytes = 12) {
 }
 
 makeId <- function(x) {
+  if (length(x) < 1)
+    return(NULL)
   x <- as.character(x)
   x <- lapply(X = x, FUN = function(y) {
     paste(as.character(charToRaw(y)), collapse = "")
@@ -400,9 +402,9 @@ style_code <- function(x) {
         s <- gsub(pattern = "[^[:space:]]", replacement = "", x = before)
         x <- paste(
           paste0(before, "("),
-          paste0(s, " ", gsub(pattern = ",", replacement = paste0(",\n", s), x = l)),
+          paste0(s, "  ", gsub(pattern = ",", replacement = paste0(",\n   ", s), x = l)),
           paste0(s, ")"),
-          sep = "\n"
+          sep = "\n  "
         )
       }
       x
@@ -411,5 +413,5 @@ style_code <- function(x) {
   code <- Reduce(function(x, y) {
     paste(x, y, sep = " +\n  ")
   }, code)
-  paste(as.character(styler::style_text(code)), collapse = "\n")
+  paste(as.character(code), collapse = "\n")
 }

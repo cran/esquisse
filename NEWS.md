@@ -1,3 +1,12 @@
+# esquisse 1.0.2
+
+* Use named character vector for scale manual instead of list (for generated code).
+* `save_ggplot_modal()` / `save_ggplot_ui()`: added `output_format` argument to select the exported format allowed.
+* Fix bug with data imported from other source than an environment [#154](https://github.com/dreamRs/esquisse/issues/154),  [#169](https://github.com/dreamRs/esquisse/issues/169)
+* Fix bug in `dragulaInput()` / `updateDragulaInput()` with selected values.
+
+
+
 # esquisse 1.0.1
 
 * Corrected a bug when using `sf` objects (fix [#147](https://github.com/dreamRs/esquisse/issues/147)).

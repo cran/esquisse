@@ -6,6 +6,7 @@ dropdown_ <- function(..., class = NULL) {
     dropdown(...),
     class = "btn-group-esquisse"
   )
+  TAG$children[[1]]$attribs <- TAG$children[[1]]$attribs[-2]
   is_content <- grepl(pattern = "sw-dropdown-content", x = TAG$children[[2]]$attribs$class)
   if (!isTRUE(is_content))
     warning("Failed to add class to dropdown content", call. = FALSE)
@@ -965,59 +966,6 @@ controls_code <- function(ns, insert_code = FALSE) {
   )
 }
 
-
-
-# Get list of themes
-get_themes <- function() {
-  themes <- getOption("esquisse.themes")
-  if (is.null(themes))
-    themes <- default_themes()
-  if (is.function(themes))
-    themes <- themes()
-  if (!is.list(themes)) {
-    stop("Option 'esquisse.themes' must be a list", call. = FALSE)
-  }
-  themes <- rapply(
-    object = themes, 
-    f = function(x) {
-      if (all(check_theme_exist(x))) {
-        x
-      } else {
-        warning(paste("Theme", x, "not found!"), call. = FALSE)
-        NULL
-      }
-    }, how = "list"
-  )
-  dropNullsOrEmptyRecursive(themes)
-}
-
-# Get list of palettes
-get_palettes <- function() {
-  pals <- getOption("esquisse.palettes")
-  if (is.null(pals))
-    pals <- default_pals()
-  if (is.function(pals))
-    pals <- pals()
-  if (!is.list(pals)) {
-    stop("Option 'esquisse.palettes' must be a list with at least one slot : 'choices'", call. = FALSE)
-  }
-  if (is.null(pals$textColor))
-    pals$textColor <- "white"
-  pals
-}
-
-# Get list of colors (spectrum)
-get_colors <- function() {
-  cols <- getOption("esquisse.colors")
-  if (is.null(cols))
-    cols <- default_cols()
-  if (is.function(cols))
-    cols <- cols()
-  # if (!is.character(cols)) {
-  #   stop("Option 'esquisse.colors' must be a character vector", call. = FALSE)
-  # }
-  cols
-}
 
 
 

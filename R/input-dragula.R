@@ -29,6 +29,7 @@
 #'  status to color them, or \code{NULL}.
 #' @param replace When a choice is dragged in a target container already
 #'  containing a choice, does the later be replaced by the new one ?
+#' @param copySource When \code{replace = TRUE}, does elements in source must be copied or moved ?
 #' @param dragulaOpts Options passed to dragula JavaScript library.
 #' @param boxStyle CSS style string to customize source and target container.
 #' @param width Width of the input.
@@ -57,6 +58,7 @@ dragulaInput <- function(inputId,
                          selected = NULL,
                          status = "primary",
                          replace = FALSE,
+                         copySource = TRUE,
                          badge = TRUE,
                          ncolSource = "auto",
                          ncolGrid = NULL,
@@ -70,7 +72,18 @@ dragulaInput <- function(inputId,
   if (!is.null(selected) && !is.list(selected))
     stop("If provided 'selected' must be a list.", call. = FALSE)
 
-  targets <- generate_targets(inputId, args, targetsLabels, targetsIds, selected, replace, boxStyle, badge, status, height)
+  targets <- generate_targets(
+    inputId = inputId,
+    args = args, 
+    targetsLabels = targetsLabels,
+    targetsIds = targetsIds, 
+    selected = selected,
+    replace = replace, 
+    boxStyle = boxStyle, 
+    badge = badge, 
+    status = status, 
+    height = height
+  )
   targetsIds <- targets$ids
   replaceTargets <- targets$replace
 
@@ -112,6 +125,7 @@ dragulaInput <- function(inputId,
           style = if (!is.null(height)) paste("height:", validateCssUnit(height), ";"),
           tags$div(
             id = paste(inputId, "source", sep = "-"),
+            class = "dragula-source",
             style = "min-height: 15px;",
             makeDragulaChoices(inputId = inputId, args = args, status = status, badge = badge)
           )
@@ -126,6 +140,7 @@ dragulaInput <- function(inputId,
           targets = list1(paste(inputId, "target", targetsIds, sep = "-")),
           replace = replace,
           replaceIds = list1(replaceTargets),
+          copySource = copySource,
           options = dragulaOpts
         ), auto_unbox = TRUE, json_verbatim = TRUE)
       )
@@ -136,15 +151,15 @@ dragulaInput <- function(inputId,
 
 generate_targets <- function(inputId, args, targetsLabels, targetsIds, selected, replace, boxStyle, badge, status, height) {
   if (is.null(targetsIds)) {
-    targetsIds <- makeId(targetsLabels)
-  } else {
-    stopifnot(length(targetsLabels) == length(targetsIds))
-    targetsIds <- makeId(targetsIds)
+    targetsIds <- targetsLabels
   }
+  stopifnot(length(targetsLabels) == length(targetsIds))
+  
+  target_ids <- makeId(targetsIds)
 
-  replaceTargets <- targetsIds
+  replaceTargets <- target_ids
   if (is.numeric(replace)) {
-    replaceTargets <- targetsIds[replace]
+    replaceTargets <- target_ids[replace]
     replace <- TRUE
   } else {
     stopifnot(is.logical(replace))
@@ -160,7 +175,7 @@ generate_targets <- function(inputId, args, targetsLabels, targetsIds, selected,
           style = if (!is.null(height)) paste("height:", validateCssUnit(height), ";"),
           style = boxStyle,
           class = "box-dad xyvar dragula-target",
-          id = paste(inputId, "target", targetsIds[i], sep = "-"),
+          id = paste(inputId, "target", target_ids[i], sep = "-"),
           style = make_bg_svg(targetsLabels[i])
         )
       } else {
@@ -170,7 +185,7 @@ generate_targets <- function(inputId, args, targetsLabels, targetsIds, selected,
           style = if (!is.null(height)) paste("height:", validateCssUnit(height), ";"),
           style = boxStyle,
           class = "box-dad xyvar dragula-target",
-          id = paste(inputId, "target", targetsIds[i], sep = "-"),
+          id = paste(inputId, "target", target_ids[i], sep = "-"),
           style = make_bg_svg(targetsLabels[i]),
           makeDragulaChoices(inputId = inputId, args = choicesTarget, status = status, badge = badge)
         )
@@ -178,7 +193,7 @@ generate_targets <- function(inputId, args, targetsLabels, targetsIds, selected,
     }
   )
   list(
-    ids = targetsIds,
+    ids = target_ids,
     replace = replaceTargets,
     targets = targets
   )
@@ -327,7 +342,7 @@ updateDragulaInput <- function(session,
         ))
       }
     )
-    names(selected) <- paste(session$ns(inputId), "target", nms, sep = "-")
+    names(selected) <- paste(session$ns(inputId), "target", makeId(nms), sep = "-")
   }
   if (!is.null(selectedNames) & !is.null(selectedValues)) {
     if (length(selectedNames) != length(selectedValues))
@@ -345,7 +360,7 @@ updateDragulaInput <- function(session,
         ))
       }
     )
-    names(selected) <- paste(session$ns(inputId), "target", nms, sep = "-")
+    names(selected) <- paste(session$ns(inputId), "target", makeId(nms), sep = "-")
   }
   message <- dropNulls(list(choices = choices, selected = selected))
   session$sendInputMessage(inputId, message)
