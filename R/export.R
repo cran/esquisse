@@ -1,11 +1,10 @@
 
-
 # Save ggplot -------------------------------------------------------------
 
 
 #' @title Save `ggplot` module
 #' 
-#' @description Save a \code{ggplot} object in various format and resize it before saving.
+#' @description Save a `ggplot` object in various format and resize it before saving.
 #'
 #' @param id Module ID.
 #' @param output_format Output formats offered to the user.
@@ -15,8 +14,8 @@
 #' 
 #' @name save-ggplot-module
 #' 
-#' @importFrom shiny NS plotOutput actionButton downloadButton textInput icon
-#' @importFrom htmltools tagList tags
+#' @importFrom shiny NS plotOutput actionButton downloadButton textInput
+#' @importFrom htmltools tagList tags css
 #' @importFrom shinyWidgets textInputIcon numericInputIcon
 #'
 #' @example examples/save-ggplot-module.R
@@ -28,49 +27,57 @@ save_ggplot_ui <- function(id, output_format = c("png", "pdf", "svg", "jpeg", "b
     tags$div(plotOutput(ns("plot"))),
     tags$br(),
     tags$div(
-      style = "display: grid;",
-      style = "grid-template-columns: 4fr 2fr 2fr 2fr;",
-      style = "grid-column-gap: 10px;",
-      style = "width: 100%;", # 868px
+      style = css(
+        display = "grid",
+        gridTemplateColumns = "4fr 2fr 2fr 2fr",
+        gridColumnGap = "10px",
+        width = "100%"
+      ),
       textInputIcon(
         inputId = ns("filename"),
         label = NULL,
         value = "export-plot",
-        placeholder = "Filename",
-        icon = list("Filename:"),
+        placeholder = i18n("Filename"),
+        icon = list(i18n("Filename:")),
         width = "100%"
       ),
       numericInputIcon(
         inputId = ns("width"),
         label = NULL,
         value = 868,
-        icon = list("Width:"),
+        icon = list(i18n("Width:")),
         width = "100%"
       ),
       numericInputIcon(
         inputId = ns("height"),
         label = NULL,
         value = 400,
-        icon = list("Height:"),
+        icon = list(i18n("Height:")),
         width = "100%"
       ),
       actionButton(
         inputId = ns("update_preview"),
-        label = "Update Preview",
-        icon = icon("eye"),
+        label = tagList(ph("eye"), i18n("Update Preview")),
         style = "margin-bottom: 15px;"
       )
     ),
     tags$div(
-      tags$label("Export format:"),
+      tags$label(i18n("Export format:")),
       tags$div(
-        style = "display: grid;",
-        style = sprintf("grid-template-columns: repeat(%s, 1fr);", length(output_format)),
-        style = "grid-column-gap: 10px;",
+        style = css(
+          display = "grid",
+          gridTemplateColumns = sprintf("repeat(%s, 1fr)", length(output_format)),
+          gridColumnGap = "10px"
+        ),
         lapply(
           X = output_format,
           FUN = function(x) {
-            downloadButton(outputId = ns(x), label = toupper(x), style = "width: 100%;")
+            downloadButton(
+              outputId = ns(x), 
+              label = tagList(ph("download"), toupper(x)), 
+              style = "width: 100%;",
+              icon = NULL
+            )
           }
         )
       )
@@ -97,11 +104,12 @@ save_ggplot_modal <- function(id,
   showModal(modalDialog(
     title = tagList(
       tags$button(
-        icon("close"),
+        ph("x"),
         class = "btn btn-default pull-right",
         style = "border: 0 none;",
         `data-dismiss` = "modal",
-        `aria-label` = "Close"
+        title = i18n("Close"),
+        `aria-label` = i18n("Close")
       ),
       title
     ),
@@ -194,7 +202,7 @@ save_ggplot_server <- function(id, plot_rv) {
 #' @param width Width of the plot.
 #' @param height Height of the plot.
 #' @param downloads Labels for export options, use `downloads_labels`.
-#' @param ... Parameters passed to \code{\link[shiny:plotOutput]{plotOutput}} or \code{\link[shiny:renderPlot]{renderPlot}}.
+#' @param ... Parameters passed to [shiny::plotOutput()] (`ggplot_output`) or [shiny::renderPlot()] (`render_ggplot`).
 #'
 #' @return Server-side, a `reactiveValues` with the plot.
 #' @export
@@ -210,13 +218,15 @@ ggplot_output <- function(id, width = "100%", height = "400px", downloads = down
   ns <- NS(id)
   tags$div(
     class = "ggplot-container",
-    style = "position: relative;",
-    style = if (!is.null(width)) paste0("width:", validateCssUnit(width), ";"),
-    style = if (!is.null(height)) paste0("height:", validateCssUnit(height), ";"),
+    style = css(
+      position = "relative",
+      width = validateCssUnit(width),
+      height = validateCssUnit(height)
+    ),
     if (!is.null(downloads)) {
       e <- downloads[-1]
       e <- e[-length(e)]
-      dlBtn <- lapply(
+      download_links <- lapply(
         X = seq_along(e),
         FUN = function(i) {
           if (is.null(e[[i]]))
@@ -235,14 +245,21 @@ ggplot_output <- function(id, width = "100%", height = "400px", downloads = down
           inputId = ns("exports"),
           label = downloads$label,
           class = "btn-sm",
-          style= "position: absolute; top: 0; right: 5px;"
+          style = css(
+            position = "absolute",
+            top = 0,
+            right = "5px",
+            zIndex = 30
+          )
         ),
         placement = "bottom-end",
-        dlBtn,
-        if (!is.null(downloads$more)) tagList(
-          tags$hr(style = "margin: 5px 0;"),
-          actionLink(inputId = ns("more"), label = downloads$more)
-        )
+        download_links,
+        if (!is.null(downloads$more)) {
+          tagList(
+            tags$hr(style = "margin: 5px 0;"),
+            actionLink(inputId = ns("more"), label = downloads$more)
+          )
+        }
       )
     },
     plotOutput(outputId = ns("plot"), width = width, height = height, ...)
@@ -256,13 +273,13 @@ ggplot_output <- function(id, width = "100%", height = "400px", downloads = down
 #' 
 #' @rdname ggplot-output
 #' @export
-downloads_labels <- function(label = icon("download"),
-                             png = tagList(icon("file-image-o"), "PNG"),
-                             pdf = tagList(icon("file-pdf-o"), "PDF"),
-                             svg = tagList(icon("chrome"), "SVG"),
-                             jpeg = tagList(icon("file-image-o"), "JPEG"),
-                             pptx = tagList(icon("file-powerpoint-o"), "PPTX"),
-                             more = tagList(icon("gear"), "More options")) {
+downloads_labels <- function(label = ph("download-simple"),
+                             png = tagList(ph("image"), "PNG"),
+                             pdf = tagList(ph("file-pdf"), "PDF"),
+                             svg = tagList(ph("browsers"), "SVG"),
+                             jpeg = tagList(ph("image"), "JPEG"),
+                             pptx = tagList(ph("projector-screen"), "PPTX"),
+                             more = tagList(ph("gear"), i18n("More options"))) {
   list(
     label = label,
     png = png,
@@ -322,7 +339,7 @@ render_ggplot <- function(id,
             ), silent = TRUE)
             if ("try-error" %in% class(ppt)) {
               shiny::showNotification(
-                ui = "Export to PowerPoint failed...", 
+                ui = i18n("Export to PowerPoint failed..."), 
                 type = "error", 
                 id = paste("esquisse", sample.int(1e6, 1), sep = "-")
               )
@@ -351,7 +368,7 @@ render_ggplot <- function(id,
         hideDropMenu("exports_dropmenu")
         save_ggplot_modal(
           id = session$ns("export"),
-          title = "Export chart"
+          title = i18n("Export chart")
         )
       })
       save_ggplot_server("export", plot_rv = rv)
@@ -396,6 +413,7 @@ download_plot_rv <- function(input, rv, device) {
 
 #' @importFrom shiny downloadHandler
 #' @importFrom ggplot2 ggsave
+#' @importFrom grDevices cairo_pdf
 download_plot_fun <- function(fun, device, filename, session) {
   downloadHandler(
     filename = function() {
@@ -412,6 +430,8 @@ download_plot_fun <- function(fun, device, filename, session) {
       width <- session$clientData[[width]]
       height <- paste0("output_", name, "_height")
       height <- session$clientData[[height]]
+      if (identical(device, "pdf") && isTRUE(capabilities("cairo")))
+        device <- grDevices::cairo_pdf
       ggsave(
         filename = file,
         plot = fun(),

@@ -89,7 +89,7 @@ esquisse_server <- function(id,
         datamods::import_modal(
           id = ns("import-data"),
           from = import_from,
-          title = "Import data to create a graph"
+          title = i18n("Import data to create a graph")
         )
       }
       
@@ -98,7 +98,7 @@ esquisse_server <- function(id,
         datamods::import_modal(
           id = ns("import-data"),
           from = import_from,
-          title = "Import data to create a graph"
+          title = i18n("Import data to create a graph")
         )
       })
       
@@ -120,7 +120,7 @@ esquisse_server <- function(id,
             type = "warning"
           )
         } else {
-          datamods::show_data(data, title = "Dataset", type = "modal")
+          datamods::show_data(data, title = i18n("Dataset"), type = "modal")
         }
       })
       
@@ -180,7 +180,7 @@ esquisse_server <- function(id,
       observeEvent(geom_possible$x, {
         geoms <- c(
           "auto", "line", "area", "bar", "histogram",
-          "point", "boxplot", "violin", "density",
+          "point", "jitter", "boxplot", "violin", "density",
           "tile", "sf"
         )
         updateDropInput(
@@ -198,8 +198,11 @@ esquisse_server <- function(id,
         type = geom_controls,
         data_table = reactive(data_chart$data),
         data_name = reactive({
-          req(data_chart$name)
-          data_chart$name
+          nm <- req(data_chart$name)
+          if (is_call(nm)) {
+            nm <- as_label(nm)
+          }
+          nm
         }),
         ggplot_rv = ggplotCall,
         aesthetics = reactive({
@@ -272,6 +275,14 @@ esquisse_server <- function(id,
             setNames(list(geom_args), input$geom),
             list(smooth = controls_rv$smooth$args)
           )
+        }
+        if (isTRUE(controls_rv$jitter$add) & input$geom %in% c("boxplot", "violin")) {
+          geom <- c(geom, "jitter")
+          geom_args <- c(
+            setNames(list(geom_args), input$geom),
+            list(jitter = controls_rv$jitter$args)
+          )
+          
         }
         if (!is.null(aes_input$ymin) & !is.null(aes_input$ymax) & input$geom %in% c("line")) {
           geom <- c("ribbon", geom)
