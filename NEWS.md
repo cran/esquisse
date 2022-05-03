@@ -1,9 +1,23 @@
+# esquisse 1.1.1
+
+* Play/Pause button is back: it allow to set reactivity in "pause" when doing multiple changes, and so avoiding to render intermediate plots.
+* New translations added:
+ + spanish, activate with `set_i18n("es")`, thanks to [@dnldelarosa](https://github.com/dnldelarosa)
+ + albanian (updated), activate with `set_i18n("al")`, thanks to [@EGjika](https://github.com/EGjika)
+ + portuguese, activate with `set_i18n("pt")`, thanks to [@mribeirodantas](https://github.com/mribeirodantas)
+
+### Bug fixes
+
+* Fix `selected` argument of `dragulaInput()` being ignored outside bookmarking.
+
+
+
 # esquisse 1.1.0
 
 * Internationalization support based on [{datamods} mechanism](https://dreamrs.github.io/datamods/articles/i18n.html).
   + i18n: :fr: french translations added, activate with `set_i18n("fr")`.
   + i18n: :macedonia: macedonian translations added, activate with `set_i18n("mk")`, thanks to [@novica](https://github.com/novica).
-  + i18n: :albania: albanian translations added, activate with `set_i18n("sq")`, thanks to [@novica](https://github.com/novica).
+  + i18n: :albania: albanian translations added, activate with `set_i18n("al")`, thanks to [@novica](https://github.com/novica).
 * Added `geom_jitter()` as possible geom.
 * Added the possibility to add jittered points above a boxplot.
 
