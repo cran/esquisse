@@ -133,15 +133,15 @@ badgeType <- function(col_name, col_type) {
       col_name_i <- col_name[i]
       col_type_i <- col_type[i]
       if (col_type_i == "discrete") {
-        tags$span(class = "label label-discrete badge-dad", col_name_i)
+        tags$span(class = "label-esquisse label-discrete badge-dad", col_name_i)
       } else if (col_type_i == "time") {
-        tags$span(class = "label label-datetime badge-dad", col_name_i)
+        tags$span(class = "label-esquisse label-datetime badge-dad", col_name_i)
       } else if (col_type_i == "continuous") {
-        tags$span(class="label label-continuous badge-dad", col_name_i)
+        tags$span(class="label-esquisse label-continuous badge-dad", col_name_i)
       } else if (col_type_i == "id") {
-        tags$span(class = "label label-default badge-dad", col_name_i)
+        tags$span(class = "label-esquisse label-id badge-dad", col_name_i)
       } else {
-        tags$span(class = "label label-other badge-dad", col_name_i)
+        tags$span(class = "label-esquisse label-other badge-dad", col_name_i)
       }
     }
   )
@@ -194,35 +194,6 @@ get_col_names <- function(data) {
 }
 
 
-
-# utils for geom icons
-geomIcons <- function() {
-  geoms <- c(
-    "auto", "line", "step", "area", "bar", "col", "histogram",
-    "point", "jitter", "boxplot", "violin", "density",
-    "tile", "sf"
-  )
-  href <- "esquisse/geomIcon/gg-%s.png"
-  geomsChoices <- lapply(
-    X = geoms,
-    FUN = function(x) {
-      list(inputId = x, img = sprintf(fmt = href, x), label = capitalize(x))
-    }
-  )
-
-  geomsChoicesNames <- lapply(
-    X = geomsChoices,
-    FUN = function(x) {
-      list(
-        style = "width: 90px;",
-        tags$img(src = x$img, width = 56, height = 56),
-        tags$br(), x$label
-      )
-    }
-  )
-
-  list(names = geomsChoicesNames, values = geoms)
-}
 
 
 capitalize <- function(x) {

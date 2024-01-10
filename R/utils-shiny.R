@@ -7,8 +7,8 @@ html_dependency_esquisse <- function() {
   htmlDependency(
     name = "esquisse",
     version = packageVersion("esquisse"),
-    src = c(file = "assets/esquisse", href = "esquisse/esquisse"),
     package = "esquisse",
+    src = c(file = "assets/esquisse"),
     script = c("js/shiny-utils.js"),
     stylesheet = c("css/styles.css", "css/annie-use-your-telescope.css"),
     all_files = TRUE
@@ -19,7 +19,8 @@ html_dependency_clipboard <- function() {
   htmlDependency(
     name = "clipboard",
     version = "2.0.6",
-    src = c(file = "assets/clipboard", href = "esquisse/clipboard"),
+    package = "esquisse",
+    src = c(file = "assets/clipboard"),
     script = c("clipboard.min.js"),
     all_files = FALSE
   )
@@ -29,7 +30,8 @@ html_dependency_moveable <- function() {
   htmlDependency(
     name = "moveable",
     version = "0.23.0",
-    src = c(file = "assets/moveable", href = "esquisse/moveable"),
+    package = "esquisse",
+    src = c(file = "assets/moveable"),
     script = c("moveable.min.js", "resizer-handler.js"),
     all_files = FALSE
   )
@@ -105,8 +107,10 @@ rCodeContainer <- function(...) {
 }
 
 
-play_pause_input <- function(inputId) {
-  play_pause <- shinyWidgets::prettyToggle(
+#' @importFrom shinyWidgets prettyToggle
+#' @importFrom htmltools css
+play_pause_input <- function(inputId, show = TRUE) {
+  play_pause <- prettyToggle(
     inputId = inputId,
     value = TRUE,
     label_on = "Play",
@@ -120,15 +124,36 @@ play_pause_input <- function(inputId) {
   )
   play_pause$attribs$style <- "display: inline-block; margin-right: -5px;"
   tags$div(
-    # style = "position: absolute; right: 0; top: 35px; font-weight: bold; z-index: 1000;",
-    style = "position: absolute; right: 40px; top: 5px; font-weight: bold; z-index: 1000;",
+    style = css(
+      position = "absolute",
+      right = "40px",
+      top = "5px",
+      fontWeight = "bold",
+      zIndex = 1000,
+      display = if (!isTRUE(show)) "none"
+    ),
+    class = "esquisse-playpause-btn",
     play_pause
   )
 }
 
 
-# Resizer handlers
 
+button_close_modal <- function() {
+  tags$button(
+    phosphoricons::ph("x", title = i18n("Close"), height = "2em"),
+    class = "btn btn-link",
+    style = css(border = "0 none", position = "absolute", top = "5px", right = "5px"),
+    `data-dismiss` = "modal",
+    `data-bs-dismiss` = "modal",
+    `aria-label` = i18n("Close")
+  )
+}
+
+
+
+
+# Resizer handlers
 activate_resizer <- function(id,
                              ...,
                              modal = FALSE,

@@ -24,7 +24,7 @@ dropdown_ <- function(..., class = NULL) {
 #       inputId = "controls-appearance",
 #       label = "Appearance",
 #       icon = icon("palette"),
-#       class = "btn-esquisse-controls"
+#       class = "btn-esquisse-controls btn-outline-primary"
 #     ),
 #     controls_appearance(ns),
 #     placement = "top"
@@ -83,7 +83,7 @@ controls_ui <- function(id,
           label = i18n("Labels & Title"),
           up = TRUE,
           icon = ph("text-aa"),
-          status = "default border btn-esquisse-controls"
+          status = "default btn-esquisse-controls btn-outline-primary text-nowrap"
         )
       },
       if (isTRUE("parameters" %in% controls)) {
@@ -95,7 +95,7 @@ controls_ui <- function(id,
           label = i18n("Plot options"),
           up = TRUE,
           icon = ph("gear"),
-          status = "default border btn-esquisse-controls"
+          status = "default btn-esquisse-controls btn-outline-primary text-nowrap"
         )
       },
       if (isTRUE("appearance" %in% controls)) {
@@ -107,7 +107,7 @@ controls_ui <- function(id,
           label = i18n("Appearance"),
           up = TRUE,
           icon = ph("palette"),
-          status = "default border btn-esquisse-controls"
+          status = "default btn-esquisse-controls btn-outline-primary text-nowrap"
         )
       },
       if (isTRUE("filters" %in% controls)) {
@@ -119,7 +119,7 @@ controls_ui <- function(id,
           label = i18n("Data"),
           up = TRUE,
           icon = ph("sliders-horizontal"),
-          status = "default border btn-esquisse-controls"
+          status = "default btn-esquisse-controls btn-outline-primary text-nowrap"
         )
       },
       if (isTRUE("code" %in% controls)) {
@@ -132,7 +132,7 @@ controls_ui <- function(id,
           up = TRUE,
           right = TRUE,
           icon = ph("code"),
-          status = "default border btn-esquisse-controls"
+          status = "default btn-esquisse-controls btn-outline-primary text-nowrap"
         )
       }
     ),
@@ -183,7 +183,8 @@ controls_server <- function(id,
                             aesthetics = reactive(NULL),
                             use_facet = reactive(FALSE),
                             use_transX = reactive(FALSE),
-                            use_transY = reactive(FALSE)) {
+                            use_transY = reactive(FALSE),
+                            drop_ids = TRUE) {
 
   callModule(
     id = id,
@@ -271,21 +272,21 @@ controls_server <- function(id,
 
       observe({
         aesthetics <- names(aesthetics())
-        toggleDisplay(id = ns("controls-shape"), display = type$x %in% "point" & !"shape" %in% aesthetics)
+        toggleDisplay(id = ns("controls-shape"), display = type$controls %in% "point" & !"shape" %in% aesthetics)
       })
 
-      observeEvent(type$x, {
-        toggleDisplay(id = ns("controls-position"), display = type$x %in% c("bar", "line", "area"))
-        toggleDisplay(id = ns("controls-histogram"), display = type$x %in% "histogram")
-        toggleDisplay(id = ns("controls-density"), display = type$x %in% c("density", "violin"))
-        toggleDisplay(id = ns("controls-scatter"), display = type$x %in% "point")
-        toggleDisplay(id = ns("controls-size"), display = type$x %in% c("point", "line", "step", "sf"))
-        toggleDisplay(id = ns("controls-violin"), display = type$x %in% "violin")
-        toggleDisplay(id = ns("controls-jitter"), display = type$x %in% c("boxplot", "violin"))
+      observeEvent(type$controls, {
+        toggleDisplay(id = ns("controls-position"), display = type$controls %in% c("bar", "line", "area", "histogram"))
+        toggleDisplay(id = ns("controls-histogram"), display = type$controls %in% "histogram")
+        toggleDisplay(id = ns("controls-density"), display = type$controls %in% c("density", "violin"))
+        toggleDisplay(id = ns("controls-scatter"), display = type$controls %in% "point")
+        toggleDisplay(id = ns("controls-size"), display = type$controls %in% c("point", "line", "step", "sf"))
+        toggleDisplay(id = ns("controls-violin"), display = type$controls %in% "violin")
+        toggleDisplay(id = ns("controls-jitter"), display = type$controls %in% c("boxplot", "violin"))
 
-        if (type$x %in% c("point")) {
+        if (type$controls %in% c("point")) {
           updateSliderInput(session = session, inputId = "size", value = 1.5)
-        } else if (type$x %in% c("line", "step")) {
+        } else if (type$controls %in% c("line", "step")) {
           updateSliderInput(session = session, inputId = "size", value = 0.5)
         }
       })
@@ -301,7 +302,10 @@ controls_server <- function(id,
             data_table()
           }
         }),
-        name = data_name
+        name = data_name,
+        #########
+        drop_ids = drop_ids
+        ########
       )
 
       outputs <- reactiveValues(
@@ -326,7 +330,7 @@ controls_server <- function(id,
         inputs <- inputs[grep(pattern = "^export_", x = names(inputs), invert = TRUE)]
         inputs <- inputs[order(names(inputs))]
         aesthetics <- names(aesthetics())
-        if (!(type$x %in% "point" & !"shape" %in% aesthetics)) {
+        if (!(type$controls %in% "point" & !"shape" %in% aesthetics)) {
           inputs$shape <- NULL
         }
         outputs$inputs <- inputs
@@ -468,6 +472,7 @@ controls_server <- function(id,
       })
 
       observeEvent(output_filter$filtered(), {
+        req(is.logical(input$disable_filters))
         if (!isTRUE(input$disable_filters)) {
           outputs$data <- output_filter$filtered()
           outputs$code <- output_filter$code()
@@ -577,7 +582,7 @@ labs_options_input <- function(inputId, label, placeholder, defaults = list()) {
           inputId = paste0(inputId, "_options"),
           label = ph("plus", title = "Options"),
           style = "border-radius: 0 4px 4px 0; width: 100%;",
-          class = "border px-0"
+          class = "btn-outline-primary border px-0"
         ),
         style = "width: 320px;",
         prettyRadioButtons(
@@ -982,7 +987,7 @@ controls_params <- function(ns) {
 controls_code <- function(ns, insert_code = FALSE) {
   tagList(
     tags$button(
-      class = "btn btn-default btn-xs pull-right btn-copy-code",
+      class = "btn btn-link btn-xs pull-right float-end btn-copy-code",
       i18n("Copy to clipboard"),
       `data-clipboard-target` = paste0("#", ns("codeggplot"))
     ), tags$script("$(function() {new ClipboardJS('.btn-copy-code');});"),

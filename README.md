@@ -65,7 +65,7 @@ latest version now looks like:
 
 ### Internationalization
 
-Currently you can use {datamods} in the following language:
+Currently you can use {esquisse} in the following language:
 <img src="man/figures/i18n/gb.svg" height="16" style="height:16px"/>
 english (default),
 <img src="man/figures/i18n/fr.svg" height="16" style="height:16px"/>
@@ -83,7 +83,13 @@ spanish,
 <img src="man/figures/i18n/tr.svg" height="16" style="height:16px"/>
 turkish,
 <img src="man/figures/i18n/kr.svg" height="16" style="height:16px"/>
-korean.
+korean,
+<img src="man/figures/i18n/pl.svg" height="16" style="height:16px"/>
+polish,
+<img src="man/figures/i18n/ja.svg" height="16" style="height:16px"/>
+japanese,
+<img src="man/figures/i18n/de.svg" height="16" style="height:16px"/>
+german.
 
 ``` r
 library(esquisse)

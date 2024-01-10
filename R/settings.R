@@ -1,20 +1,13 @@
 
 #' @importFrom htmltools tags tagList
 #' @importFrom shiny getDefaultReactiveDomain modalDialog
-#' @importFrom shinyWidgets alert prettyCheckboxGroup
+#' @importFrom shinyWidgets alert prettyCheckboxGroup prettyRadioButtons
 modal_settings <- function(aesthetics = NULL, session = shiny::getDefaultReactiveDomain()) {
   ns <- session$ns
   modalDialog(
     title = tagList(
       i18n("Esquisse settings"),
-      tags$button(
-        ph("x", title = i18n("Close")),
-        title = i18n("Close"),
-        class = "btn btn-default",
-        style = "border: 0 none; position: absolute; top: 5px; right: 5px;",
-        `data-dismiss` = "modal",
-        `data-bs-dismiss` = "modal"
-      )
+      button_close_modal()
     ),
     tags$label(
       i18n("Select aesthetics to be used to build a graph:"),
@@ -36,7 +29,7 @@ modal_settings <- function(aesthetics = NULL, session = shiny::getDefaultReactiv
         tagList(tags$b("shape:"), i18n("shape of the points")),
         tagList(tags$b("weight:"), i18n("frequency weights")),
         tagList(tags$b("group:"), i18n("identifies series of points with a grouping variable")),
-        tagList(tags$b("ymin:"), i18n("used in ribbons charts with ymax to display an interval between two lines")),
+        tagList(tags$b("ymin:"), tags$span(i18n("used in ribbons charts with ymax to display an interval between two lines"))),
         tagList(tags$b("ymax:"), i18n("used in ribbons charts with ymin to display an interval between two lines")),
         tagList(tags$b("facet:"), i18n("create small multiples")),
         tagList(tags$b("facet row:"), i18n("create small multiples by rows")),
@@ -44,11 +37,26 @@ modal_settings <- function(aesthetics = NULL, session = shiny::getDefaultReactiv
       ),
       choiceValues = c("fill", "color", "size", "shape", "weight", "group", "ymin", "ymax", "facet", "facet_row", "facet_col"),
       selected = aesthetics %||% c("fill", "color", "size", "facet"),
-      status = "primary"
+      status = "primary",
+      outline = TRUE
+    ),
+    prettyRadioButtons(
+      inputId = ns("notify_warnings"),
+      label = i18n("Show notifications when the plot generate a warning:"),
+      choiceNames = c(
+        i18n("Always"),
+        i18n("Once per warning"),
+        i18n("Never")
+      ),
+      choiceValues = c("always", "once", "never"),
+      selected = "once",
+      status = "primary",
+      inline = TRUE,
+      outline = TRUE
     ),
     easyClose = TRUE,
     footer = NULL,
-    size = "m"
+    size = "l"
   )
 }
 

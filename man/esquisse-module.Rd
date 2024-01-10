@@ -12,14 +12,19 @@ esquisse_ui(
   header = TRUE,
   container = esquisseContainer(),
   controls = c("labs", "parameters", "appearance", "filters", "code"),
-  insert_code = FALSE
+  insert_code = FALSE,
+  play_pause = TRUE,
+  downloads = downloads_labels()
 )
 
 esquisse_server(
   id,
   data_rv = NULL,
+  name = "data",
   default_aes = c("fill", "color", "size", "group", "facet"),
-  import_from = c("env", "file", "copypaste", "googlesheets")
+  import_from = c("env", "file", "copypaste", "googlesheets", "url"),
+  drop_ids = TRUE,
+  notify_warnings = NULL
 )
 
 esquisseContainer(width = "100\%", height = "700px", fixed = FALSE)
@@ -27,7 +32,9 @@ esquisseContainer(width = "100\%", height = "700px", fixed = FALSE)
 \arguments{
 \item{id}{Module ID.}
 
-\item{header}{Logical. Display or not \code{esquisse} header.}
+\item{header}{Either \code{TRUE} or \code{FALSE} to display or not \code{esquisse} header, or a named \code{list}
+where names are : \code{settings}, \code{close}, \code{import} and \code{show_data} and values are \code{TRUE} or
+\code{FALSE} to display or not the corresponding button.}
 
 \item{container}{Container in which display the addin,
 default is to use \code{esquisseContainer}, see examples.
@@ -39,14 +46,29 @@ Must be a \code{function}.}
 \item{insert_code}{Logical, Display or not a button to insert the ggplot
 code in the current user script (work only in RStudio).}
 
-\item{data_rv}{A \code{reactiveValues} with at least a slot \code{data} containing a \code{data.frame}
-to use in the module. And a slot \code{name} corresponding to the name of the \code{data.frame}.}
+\item{play_pause}{Display or not the play / pause button.}
+
+\item{downloads}{Export options available or \code{NULL} for no export. See \code{\link[=downloads_labels]{downloads_labels()}}.}
+
+\item{data_rv}{Either:
+\itemize{
+\item A \code{\link[shiny:reactiveValues]{shiny::reactiveValues()}} with a slot \code{data} containing a \code{data.frame}
+to use in the module and a slot \code{name} corresponding to the name of the \code{data.frame} used for the generated code.
+\item A \code{\link[shiny:reactive]{shiny::reactive()}} function returning a \code{data.frame}. See argument \code{name} for the name used in generated code.
+\item A \code{data.frame} object.
+}}
+
+\item{name}{The default name to use in generated code. Can be a \code{reactive} function return a single character.}
 
 \item{default_aes}{Default aesthetics to be used, can be a \code{character}
 vector or \code{reactive} function returning one.}
 
 \item{import_from}{From where to import data, argument passed
-to \code{\link[datamods:import-modal]{datamods::import_ui}}.}
+to \code{\link[datamods:import-modal]{datamods::import_server()}}, use \code{NULL} to prevent the modal to appear.}
+
+\item{drop_ids}{Argument passed to \link[datamods:filter-data]{datamods::filter_data_server}. Drop columns containing more than 90\% of unique values, or than 50 distinct values.}
+
+\item{notify_warnings}{See \code{\link[=safe_ggplot]{safe_ggplot()}}. If \code{NULL}, the user can make his or her own choice via the settings menu, default is to show warnings once.}
 
 \item{width, height}{The width and height of the container, e.g. \code{"400px"},
 or \code{"100\%"}; see \code{\link[htmltools]{validateCssUnit}}.}
@@ -141,15 +163,17 @@ my_data <- data.frame(
 
 ui <- fluidPage(
   esquisse_ui(
-    id = "esquisse", 
-    container = esquisseContainer(fixed = TRUE)
+    id = "esquisse",
+    header = list(close = FALSE), # hide the close button
+    container = esquisseContainer(fixed = TRUE),
+    play_pause = FALSE
   )
 )
 
 server <- function(input, output, session) {
-  
+
   esquisse_server(id = "esquisse")
-  
+
 }
 
 if (interactive())

@@ -58,7 +58,8 @@ save_ggplot_ui <- function(id, output_format = c("png", "pdf", "svg", "jpeg", "b
       actionButton(
         inputId = ns("update_preview"),
         label = tagList(ph("eye"), i18n("Update Preview")),
-        style = "margin-bottom: 15px;"
+        style = "margin-bottom: 15px;",
+        class = "btn-outline-primary text-nowrap"
       )
     ),
     tags$div(
@@ -77,7 +78,7 @@ save_ggplot_ui <- function(id, output_format = c("png", "pdf", "svg", "jpeg", "b
               label = tagList(ph("download"), toupper(x)),
               style = "width: 100%;",
               icon = NULL,
-              class = "border"
+              class = "btn-sm btn-outline-primary"
             )
           }
         )
@@ -104,19 +105,11 @@ save_ggplot_modal <- function(id,
   ns <- NS(id)
   showModal(modalDialog(
     title = tagList(
-      tags$button(
-        ph("x", title = i18n("Close")),
-        class = "btn btn-default",
-        style = "border: 0 none; position: absolute; top: 5px; right: 5px;",
-        `data-dismiss` = "modal",
-        `data-bs-dismiss` = "modal",
-        title = i18n("Close"),
-        `aria-label` = i18n("Close")
-      ),
-      title
+      title,
+      button_close_modal()
     ),
     footer = NULL,
-    size = "l",
+    size = "xl",
     fade = FALSE,
     save_ggplot_ui(id, output_format = output_format),
     tags$div(
@@ -203,7 +196,7 @@ save_ggplot_server <- function(id, plot_rv) {
 #' @param id Module ID.
 #' @param width Width of the plot.
 #' @param height Height of the plot.
-#' @param downloads Labels for export options, use `downloads_labels`.
+#' @param downloads Labels for export options, use `downloads_labels()` or `NULL` to disable export options.
 #' @param ... Parameters passed to [shiny::plotOutput()] (`ggplot_output`) or [shiny::renderPlot()] (`render_ggplot`).
 #'
 #' @return Server-side, a `reactiveValues` with the plot.
@@ -246,7 +239,7 @@ ggplot_output <- function(id, width = "100%", height = "400px", downloads = down
         actionButton(
           inputId = ns("exports"),
           label = downloads$label,
-          class = "btn-sm",
+          class = "btn-sm esquisse-export-btn btn-outline-primary",
           style = css(
             position = "absolute",
             top = 0,
@@ -383,7 +376,7 @@ render_ggplot <- function(id,
 
 
 
-# Utils donwload handlers -------------------------------------------------
+# Utils download handlers -------------------------------------------------
 
 
 #' @importFrom shiny downloadHandler

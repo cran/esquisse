@@ -135,7 +135,7 @@
 
 .esquisse-controls-filters {
   min-width: 350px;
-  max-height: 90vh;
+  max-height: min(90vh, 600px);
   min-height: 30vh;
   padding-right: 5px;
   overflow-y: auto;
@@ -182,46 +182,15 @@
   border: dashed 2px #ccc !important;
 }
 
-/* shiny alerts */
 
-div[id^="shiny-notification-esquisse"].shiny-notification-error {
-  color: #fff !important;
-  background-color: #d9534f !important;
-  border: 1px solid #d9534f !important;
-}
 
-div[id^="shiny-notification-esquisse"].shiny-notification-warning {
-  color: #fff !important;
-  background-color: #f39c12 !important;
-  border: 1px solid #f39c12 !important;
-}
-
-div[id^="shiny-notification-esquisse"].shiny-notification-message {
-  color: #fff !important;
-  background-color: #5cb85c !important;
-  border: 1px solid #5cb85c !important;
-}
-
-div[id^="shiny-notification-esquisse"].shiny-notification {
-  font-size: 120% !important;
-  font-weight: bold !important;
-}
-
-/*
-#shiny-notification-panel {
-  width: 100% !important;
-  text-align: center !important;
-}
-*/
-
-div[id^="shiny-notification-esquisse"] > .shiny-notification-close {
-  font-size: 26px;
-  color: #fff;
-  cursor: pointer;
-}
-
+/* drop menu input */
 .drop-input, .drop-input-main {
   height: 100%;
+}
+.drop-input-button:disabled {
+  cursor: not-allowed;
+  pointer-events: auto;
 }
 
 
@@ -236,3 +205,37 @@ div[id^="shiny-notification-esquisse"] > .shiny-notification-close {
 }
 
 
+
+/* Style for variable badges */
+.label-esquisse {
+	display: inline;
+	padding: .2em .6em .3em;
+	font-size: 80%;
+	font-weight: 700;
+	line-height: 1;
+	color: #fff;
+	text-align: center;
+	white-space: nowrap;
+	vertical-align: baseline;
+	border-radius: .25em;
+}
+.label-discrete {
+  background-color: #EF562D;
+  color: #FFFFFF;
+}
+.label-continuous {
+  background-color: #0C4C8A;
+  color: #FFFFFF;
+}
+.label-datetime {
+  background-color: #97D5E0;
+  color: #FFFFFF;
+}
+.label-id {
+  background-color: #848484;
+  color: #FFFFFF;
+}
+.label-other {
+  background-color: #2E2E2E;
+  color: #FFFFFF;
+}

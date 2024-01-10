@@ -1,10 +1,17 @@
 
-#' @param data_rv A `reactiveValues` with at least a slot `data` containing a `data.frame`
-#'  to use in the module. And a slot `name` corresponding to the name of the `data.frame`.
+#' @param data_rv Either:
+#'  * A [shiny::reactiveValues()] with a slot `data` containing a `data.frame`
+#'    to use in the module and a slot `name` corresponding to the name of the `data.frame` used for the generated code.
+#'  * A [shiny::reactive()] function returning a `data.frame`. See argument `name` for the name used in generated code.
+#'  * A `data.frame` object.
+#' @param name The default name to use in generated code. Can be a `reactive` function return a single character.
 #' @param default_aes Default aesthetics to be used, can be a `character`
 #'  vector or `reactive` function returning one.
 #' @param import_from From where to import data, argument passed
-#'  to \code{\link[datamods:import-modal]{datamods::import_ui}}.
+#'  to [datamods::import_server()], use `NULL` to prevent the modal to appear.
+#' @param drop_ids Argument passed to [datamods::filter_data_server]. Drop columns containing more than 90% of unique values, or than 50 distinct values.
+#' @param notify_warnings See [safe_ggplot()]. If `NULL`, the user can make his or her own choice via the settings menu, default is to show warnings once.
+#'
 #'
 #' @export
 #'
@@ -13,84 +20,68 @@
 #'
 #' @importFrom shiny moduleServer reactiveValues observeEvent is.reactive
 #'  renderPlot stopApp plotOutput showNotification isolate reactiveValuesToList
+#'  is.reactivevalues
 #' @importFrom ggplot2 ggplot_build ggsave %+%
 #' @import ggplot2
 #' @importFrom datamods import_modal import_server show_data
 #' @importFrom rlang expr sym
 esquisse_server <- function(id,
                             data_rv = NULL,
+                            name = "data",
                             default_aes = c("fill", "color", "size", "group", "facet"),
-                            import_from = c("env", "file", "copypaste", "googlesheets")) {
+                            import_from = c("env", "file", "copypaste", "googlesheets", "url"),
+                            drop_ids = TRUE,
+                            notify_warnings = NULL) {
 
   moduleServer(
     id = id,
     module = function(input, output, session) {
+
       ns <- session$ns
       ggplotCall <- reactiveValues(code = "")
       data_chart <- reactiveValues(data = NULL, name = NULL)
+      geom_rv <- reactiveValues(possible = "auto", controls = "auto", palette = FALSE)
 
       # Settings modal (aesthetics choices)
       observeEvent(input$settings, {
         showModal(modal_settings(aesthetics = input$aesthetics))
       })
 
-      # Generate drag-and-drop input
-      output$ui_aesthetics <- renderUI({
-        if (is.reactive(default_aes)) {
-          aesthetics <- default_aes()
-        } else {
-          if (is.null(input$aesthetics)) {
-            aesthetics <- default_aes
-          } else {
-            aesthetics <- input$aesthetics
-          }
-        }
-        data <- isolate(data_chart$data)
-        if (!is.null(data)) {
-          var_choices <- get_col_names(data)
-          dragulaInput(
-            inputId = ns("dragvars"),
-            sourceLabel = "Variables",
-            targetsLabels = c("X", "Y", aesthetics),
-            targetsIds = c("xvar", "yvar", aesthetics),
-            choiceValues = var_choices,
-            choiceNames = badgeType(
-              col_name = var_choices,
-              col_type = col_type(data[, var_choices, drop = TRUE])
-            ),
-            selected = dropNulls(isolate(input$dragvars$target)),
-            badge = FALSE,
-            width = "100%",
-            height = "70px",
-            replace = TRUE
-          )
-        } else {
-          dragulaInput(
-            inputId = ns("dragvars"),
-            sourceLabel = "Variables",
-            targetsLabels = c("X", "Y", aesthetics),
-            targetsIds = c("xvar", "yvar", aesthetics),
-            choices = "",
-            badge = FALSE,
-            width = "100%",
-            height = "70px",
-            replace = TRUE
-          )
-        }
-      })
 
-      observeEvent(data_rv$data, {
-        data_chart$data <- data_rv$data
-        data_chart$name <- data_rv$name
-      }, ignoreInit = FALSE)
+      if (is.reactivevalues(data_rv)) {
+        observeEvent(data_rv$data, {
+          data_chart$data <- data_rv$data
+          data_chart$name <- data_rv$name %||% if (is.reactive(name)) {
+            name()
+          } else {
+            name
+          }
+        }, ignoreInit = FALSE)
+      } else if (is.reactive(data_rv)) {
+        observeEvent(data_rv(), {
+          data_chart$data <- data_rv()
+          data_chart$name <- if (is.reactive(name)) {
+            name()
+          } else {
+            name
+          }
+        }, ignoreInit = FALSE)
+      } else if (is.data.frame(data_rv)) {
+        data_chart$data <- data_rv
+        data_chart$name <- if (is.character(name)) name
+      }
 
       # Launch import modal if no data at start
-      if (is.null(isolate(data_rv$data))) {
-        datamods::import_modal(
-          id = ns("import-data"),
-          from = import_from,
-          title = i18n("Import data to create a graph")
-        )
+      if (!is.null(import_from)) {
+        observe({
+          if (is.null(data_chart$data)) {
+            datamods::import_modal(
+              id = ns("import-data"),
+              from = import_from,
+              title = i18n("Import data to create a graph")
+            )
+          }
+        })
       }
 
       # Launch import modal if button clicked
@@ -110,84 +101,52 @@ esquisse_server <- function(id,
         data_chart$name <- data_imported_r$name() %||% "imported_data"
       })
 
-      observeEvent(input$show_data, {
-        data <- controls_rv$data
-        if (!is.data.frame(data)) {
-          showNotification(
-            ui = "No data to display",
-            duration = 700,
-            id = paste("esquisse", sample.int(1e6, 1), sep = "-"),
-            type = "warning"
-          )
-        } else {
-          datamods::show_data(data, title = i18n("Dataset"), type = "modal")
+      # show data if button clicked
+      show_data_server("show_data", reactive(controls_rv$data))
+
+      # special case: geom_sf
+      observeEvent(data_chart$data, {
+        if (inherits(data_chart$data, what = "sf")) {
+          geom_rv$possible <- c("sf", geom_rv$possible)
         }
       })
 
-      # Update drag-and-drop input when data changes
-      observeEvent(data_chart$data, {
-        data <- data_chart$data
-        if (is.null(data)) {
-          updateDragulaInput(
-            session = session,
-            inputId = "dragvars",
-            status = NULL,
-            choices = character(0),
-            badge = FALSE
-          )
-        } else {
-          # special case: geom_sf
-          if (inherits(data, what = "sf")) {
-            geom_possible$x <- c("sf", geom_possible$x)
-          }
-          var_choices <- get_col_names(data)
-          updateDragulaInput(
-            session = session,
-            inputId = "dragvars",
-            status = NULL,
-            choiceValues = var_choices,
-            choiceNames = badgeType(
-              col_name = var_choices,
-              col_type = col_type(data[, var_choices, drop = TRUE])
-            ),
-            badge = FALSE
-          )
-        }
-      }, ignoreNULL = FALSE)
+      # Aesthetic selector
+      aes_r <- select_aes_server(
+        id = "aes",
+        data_r = reactive(data_chart$data),
+        default_aes = default_aes,
+        input_aes = reactive(input$aesthetics)
+      )
 
-      geom_possible <- reactiveValues(x = "auto")
-      geom_controls <- reactiveValues(x = "auto")
-      observeEvent(list(input$dragvars$target, input$geom), {
+
+      observeEvent(list(aes_r(), input$geom), {
         geoms <- potential_geoms(
           data = data_chart$data,
           mapping = build_aes(
             data = data_chart$data,
-            x = input$dragvars$target$xvar,
-            y = input$dragvars$target$yvar
+            x = aes_r()$xvar,
+            y = aes_r()$yvar
           )
         )
-        geom_possible$x <- c("auto", geoms)
+        geom_rv$possible <- c("auto", geoms)
 
-        geom_controls$x <- select_geom_controls(input$geom, geoms)
+        geom_rv$controls <- select_geom_controls(input$geom, geoms)
 
-        if (!is.null(input$dragvars$target$fill) | !is.null(input$dragvars$target$color)) {
-          geom_controls$palette <- TRUE
+        if (!is.null(aes_r()$fill) | !is.null(aes_r()$color)) {
+          geom_rv$palette <- TRUE
         } else {
-          geom_controls$palette <- FALSE
+          geom_rv$palette <- FALSE
         }
       }, ignoreInit = TRUE)
 
-      observeEvent(geom_possible$x, {
-        geoms <- c(
-          "auto", "line", "area", "bar", "col", "histogram",
-          "point", "jitter", "boxplot", "violin", "density",
-          "tile", "sf"
-        )
+      observeEvent(geom_rv$possible, {
+        geoms <- geomIcons()$values
         updateDropInput(
           session = session,
           inputId = "geom",
-          selected = setdiff(geom_possible$x, "auto")[1],
-          disabled = setdiff(geoms, geom_possible$x)
+          selected = setdiff(geom_rv$possible, "auto")[1],
+          disabled = setdiff(geoms, geom_rv$possible)
         )
       })
 
@@ -195,7 +154,7 @@ esquisse_server <- function(id,
       # paramsChart <- reactiveValues(inputs = NULL)
       controls_rv <- controls_server(
         id = "controls",
-        type = geom_controls,
+        type = geom_rv,
         data_table = reactive(data_chart$data),
         data_name = reactive({
           nm <- req(data_chart$name)
@@ -206,27 +165,28 @@ esquisse_server <- function(id,
         }),
         ggplot_rv = ggplotCall,
         aesthetics = reactive({
-          dropNullsOrEmpty(input$dragvars$target)
+          dropNullsOrEmpty(aes_r())
         }),
         use_facet = reactive({
-          !is.null(input$dragvars$target$facet) | !is.null(input$dragvars$target$facet_row) | !is.null(input$dragvars$target$facet_col)
+          !is.null(aes_r()$facet) | !is.null(aes_r()$facet_row) | !is.null(aes_r()$facet_col)
         }),
         use_transX = reactive({
-          if (is.null(input$dragvars$target$xvar))
+          if (is.null(aes_r()$xvar))
             return(FALSE)
           identical(
-            x = col_type(data_chart$data[[input$dragvars$target$xvar]]),
+            x = col_type(data_chart$data[[aes_r()$xvar]]),
             y = "continuous"
           )
         }),
         use_transY = reactive({
-          if (is.null(input$dragvars$target$yvar))
+          if (is.null(aes_r()$yvar))
             return(FALSE)
           identical(
-            x = col_type(data_chart$data[[input$dragvars$target$yvar]]),
+            x = col_type(data_chart$data[[aes_r()$yvar]]),
             y = "continuous"
           )
-        })
+        }),
+        drop_ids = drop_ids
       )
 
 
@@ -237,7 +197,7 @@ esquisse_server <- function(id,
         req(controls_rv$inputs)
         req(input$geom)
 
-        aes_input <- make_aes(input$dragvars$target)
+        aes_input <- make_aes(aes_r())
 
         req(unlist(aes_input) %in% names(data_chart$data))
 
@@ -334,9 +294,9 @@ esquisse_server <- function(id,
           theme = controls_rv$theme$theme,
           theme_args = controls_rv$theme$args,
           coord = controls_rv$coord,
-          facet = input$dragvars$target$facet,
-          facet_row = input$dragvars$target$facet_row,
-          facet_col = input$dragvars$target$facet_col,
+          facet = aes_r()$facet,
+          facet_row = aes_r()$facet_row,
+          facet_col = aes_r()$facet_col,
           facet_args = controls_rv$facet,
           xlim = xlim,
           ylim = ylim
@@ -347,7 +307,8 @@ esquisse_server <- function(id,
 
         ggplotCall$ggobj <- safe_ggplot(
           expr = expr((!!gg_call) %+% !!sym("esquisse_data")),
-          data = setNames(list(data, data), c("esquisse_data", data_chart$name))
+          data = setNames(list(data, data), c("esquisse_data", data_chart$name)),
+          show_notification = notify_warnings %||% input$notify_warnings  %||% "once"
         )
         ggplotCall$ggobj$plot
       }, filename = "esquisse-plot")

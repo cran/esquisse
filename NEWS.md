@@ -1,3 +1,19 @@
+# esquisse 1.2.0
+
+* Warning messages are now displayed only once per session, and the user can choose via the settings menu not to display them at all. If you're using the `esquisse_server()` module, there's a new `notify_warnings =` argument for choosing what to do with notifications: display them all, only once per warning or never display them at all.
+* `esquisse_server()` : support for reactive functions for `data_rv` argument.
+* Allow `esquisse_server()` to be initialized with NULL without forcing the import module to appear using `import_from = NULL` [#232](https://github.com/dreamRs/esquisse/issues/232).
+* New geom available in the interface : `geom_path`.
+* `esquisse_ui()`: ability to display not element of the module (header's button, play/pause button, export options).
+* `safe_ggplot()` has a new argument `show_notification` to allow not displaying notifications or displaying theme only once per session.
+
+* i18n: new translations added:
+ + polish, activate with `set_i18n("pl")`, thanks to [@jakub-jedrusiak](https://github.com/jakub-jedrusiak)
+ + japanese, activate with `set_i18n("ja")`, thanks to [@nissinbo](https://github.com/nissinbo)
+ + german, activate with `set_i18n("de")`, thanks to [@1O](https://github.com/1O)
+ 
+
+
 # esquisse 1.1.2
 
 * i18n: new translations added:

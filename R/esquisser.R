@@ -55,10 +55,6 @@ esquisser <- function(data = NULL,
   if (!is.null(res_data$esquisse_data)) {
     res_data$esquisse_data <- dropListColumns(res_data$esquisse_data)
   }
-  rv <- reactiveValues(
-    data = res_data$esquisse_data,
-    name = res_data$esquisse_data_name
-  )
 
   if (viewer == "browser") {
     inviewer <- browserViewer(browser = getOption("browser"))
@@ -67,7 +63,7 @@ esquisser <- function(data = NULL,
   } else {
     inviewer <- dialogViewer(
       paste(
-        "Le petit prince, qui me posait beaucoup de questions, ne semblait jamais entendre les miennes."
+        "Les \u00e9toiles sont \u00e9clair\u00e9es pour que chacun puisse un jour retrouver la sienne."
       ),
       width = 1100,
       height = 750
@@ -77,15 +73,43 @@ esquisser <- function(data = NULL,
   runGadget(
     app = esquisse_ui(
       id = "esquisse",
-      container = NULL,
+      container = function(...) {
+        shiny::fillPage(
+          theme = bs_theme_esquisse(),
+          ...
+        )
+      },
       insert_code = TRUE,
       controls = controls
     ),
     server = function(input, output, session) {
-      esquisse_server("esquisse", rv)
+      esquisse_server(
+        id = "esquisse",
+        data_rv = res_data$esquisse_data,
+        name = res_data$esquisse_data_name,
+        import_from = c("env", "file", "copypaste", "googlesheets", "url")
+      )
     },
     viewer = inviewer
   )
 }
 
+
+#' @importFrom bslib bs_theme bs_add_rules
+bs_theme_esquisse <- function() {
+  theme <- bslib::bs_theme(
+    version = 5L,
+    primary = "#112446",
+    secondary = "#cccccc",
+    preset = "bootstrap",
+    font_scale = 0.8
+  )
+  bslib::bs_add_rules(
+    theme = theme,
+    c(
+      ".modal-title { @extend .mt-0 }",
+      "#NotiflixNotifyWrap { inset: auto 5px 38px auto !important; }"
+    )
+  )
+}
 
