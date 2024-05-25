@@ -9,6 +9,8 @@ match_geom_args(
   args,
   add_aes = TRUE,
   mapping = list(),
+  add_mapping = FALSE,
+  exclude_args = NULL,
   envir = "ggplot2"
 )
 }
@@ -21,10 +23,14 @@ match_geom_args(
 
 \item{mapping}{Mapping used in plot, to avoid setting fixed aesthetics parameters.}
 
+\item{add_mapping}{Add the mapping as an argument.}
+
+\item{exclude_args}{Character vector of arguments to exclude, default is to exclude aesthetics names.}
+
 \item{envir}{Package environment to search in.}
 }
 \value{
-a \code{list}
+a \code{list()}.
 }
 \description{
 Match list of arguments to arguments of geometry

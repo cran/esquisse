@@ -1,3 +1,24 @@
+# esquisse 2.0.0
+
+* New app to use esquisse online: https://dreamrs.shinyapps.io/esquisse/.
+* Support for Plotly, transforming charts with `ggplotly`.
+* Ability to use multiple geometries and their respective aesthetics.
+* New layout available to display controls inside accordeons in a sidebar.
+* New modules available in header to interact with data:
+  - Update variables classes and names
+  - Create a new variable based on an R expression
+  - Cut a numeric variable into factor
+  - Re-order factor levels
+* Controls have been reorganized into the following categories: options, labs, axes, geoms, theme, filters, code, export
+
+
+
+# esquisse 1.2.1
+
+* Add alpha transparency in aes setting, by [@MajoroMask](https://github.com/MajoroMask).
+
+
+
 # esquisse 1.2.0
 
 * Warning messages are now displayed only once per session, and the user can choose via the settings menu not to display them at all. If you're using the `esquisse_server()` module, there's a new `notify_warnings =` argument for choosing what to do with notifications: display them all, only once per warning or never display them at all.

@@ -1,5 +1,9 @@
 
-#' Potential geometries according to the data
+#' @title Potential geometries according to the data
+#'
+#' @description
+#' From the data and variable used in aesthetics, decide which geometry can be used and which one is used by default.
+#'
 #'
 #' @param data A \code{data.frame}
 #' @param mapping List of aesthetic mappings to use with data.
@@ -7,6 +11,10 @@
 #'
 #' @return A \code{character} vector
 #' @export
+#'
+#' @name geoms
+#'
+#' @importFrom rlang has_name eval_tidy expr sym
 #'
 #' @examples
 #'
@@ -38,7 +46,7 @@
 #' )
 potential_geoms <- function(data, mapping, auto = FALSE) {
 
-  data_mapped <- lapply(mapping, rlang::eval_tidy, data = data)
+  data_mapped <- lapply(mapping, eval_tidy, data = data)
 
   x_type <- col_type(data_mapped$x, no_id = TRUE)
   y_type <- col_type(data_mapped$y, no_id = TRUE)
@@ -76,6 +84,10 @@ potential_geoms <- function(data, mapping, auto = FALSE) {
       geoms <- c(geoms, "sf")
     }
   }
+  if (isTRUE(x_type %in% c("continuous", "time")) & all(has_name(mapping, c("ymin", "ymax"))))
+    geoms <- c(geoms, "ribbon")
+  if (isTRUE(y_type %in% c("continuous", "time")) &  all(has_name(mapping, c("xmin", "xmax"))))
+    geoms <- c(geoms, "ribbon")
 
   return(geoms)
 }
@@ -83,10 +95,17 @@ potential_geoms <- function(data, mapping, auto = FALSE) {
 
 
 
-
+#' @export
+#'
+#' @rdname geoms
 #' @importFrom ggplot2 geom_histogram geom_density geom_bar geom_sf
 #' geom_boxplot geom_bar geom_point geom_line geom_tile geom_violin
 #' geom_area geom_smooth geom_col
+#'
+#' @examples
+#' # Reference used by esquisse to select available geoms
+#' # and decide which one to use by default
+#' potential_geoms_ref()
 potential_geoms_ref <- function() {
   x <- matrix(
     data = c(
@@ -108,18 +127,24 @@ potential_geoms_ref <- function() {
       "discrete",    "continuous",  "point",     "0",
       "discrete",    "continuous",  "jitter",    "0",
       "discrete",    "continuous",  "violin",    "0",
+      "discrete",    "continuous",  "text",      "0",
+      "discrete",    "continuous",  "label",     "0",
       "continuous",  "continuous",  "point",     "1",
       "continuous",  "continuous",  "jitter",    "0",
       "continuous",  "continuous",  "line",      "0",
       "continuous",  "continuous",  "step",      "0",
       "continuous",  "continuous",  "path",      "0",
       "continuous",  "continuous",  "area",      "0",
+      "continuous",  "continuous",  "smooth",    "0",
+      "continuous",  "continuous",  "text",      "0",
+      "continuous",  "continuous",  "label",     "0",
       "discrete",    "discrete",    "tile",      "1",
       "time",        "continuous",  "line",      "1",
       "time",        "continuous",  "point",     "0",
       "time",        "continuous",  "step",      "0",
       "time",        "continuous",  "area",      "0",
       "time",        "continuous",  "bar",       "0",
+      "time",        "continuous",  "smooth",    "0",
       "empty",       "continuous",  "line",      "1",
       "empty",       "continuous",  "step",      "0",
       "empty",       "continuous",  "path",      "0",
@@ -145,9 +170,11 @@ potential_geoms_ref <- function() {
 #' @param args Named list, parameters to be matched to the geometry arguments.
 #' @param add_aes Add aesthetics parameters (like size, fill, ...).
 #' @param mapping Mapping used in plot, to avoid setting fixed aesthetics parameters.
+#' @param add_mapping Add the mapping as an argument.
+#' @param exclude_args Character vector of arguments to exclude, default is to exclude aesthetics names.
 #' @param envir Package environment to search in.
 #'
-#' @return a \code{list}
+#' @return a `list()`.
 #' @export
 #'
 #' @examples
@@ -167,23 +194,30 @@ potential_geoms_ref <- function() {
 #' match_geom_args(geom = "bar", args = params, add_aes = FALSE)
 #' match_geom_args(geom = "point", args = params)
 #' match_geom_args(geom = "point", args = params, add_aes = FALSE)
-match_geom_args <- function(geom, args, add_aes = TRUE, mapping = list(), envir = "ggplot2") {
+match_geom_args <- function(geom,
+                            args,
+                            add_aes = TRUE,
+                            mapping = list(),
+                            add_mapping = FALSE,
+                            exclude_args = NULL,
+                            envir = "ggplot2") {
+  if (is.null(exclude_args))
+    exclude_args <- names(aes(!!!syms2(mapping)))
   if (!is.null(args$fill_color)) {
-    if (geom %in% c("bar", "col", "histogram", "boxplot", "violin", "density")) {
+    if (geom %in% c("bar", "col", "histogram", "boxplot", "violin", "density", "ribbon")) {
       args$fill <- args$fill_color %||% "#0C4C8A"
     }
-    if (geom %in% c("line", "step", "path", "point")) {
+    if (geom %in% c("line", "step", "path", "point", "smooth")) {
       args$colour <- args$fill_color %||% "#0C4C8A"
     }
   }
   if (geom %in% c("bar", "col", "histogram", "boxplot", "violin", "density")) {
     args$size <- NULL
+    args$linewidth <- NULL
   }
-  if (identical(args$position, "stack")) {
-    args$position <- NULL
-  }
-  if (!geom %in% c("bar", "histogram")) {
-    args$position <- NULL
+  if (geom %in% c("col")) {
+    args$stat <- NULL
+    args$fun <- NULL
   }
   pkg_envir <- getNamespace(envir)
   if (!grepl(pattern = "^geom_", x = geom))
@@ -191,18 +225,25 @@ match_geom_args <- function(geom, args, add_aes = TRUE, mapping = list(), envir 
   geom_args <- try(formals(fun = get(geom, envir = pkg_envir)), silent = TRUE)
   if (inherits(geom_args, "try-error"))
     stop(paste(geom, "not found in", envir), call. = FALSE)
-  if (!is.null(geom_args$stat)) {
+  if (!is.null(args$stat)) {
     stat_args <- try(
-      formals(fun = get(paste0("stat_", geom_args$stat), envir = pkg_envir)),
+      formals(fun = get(paste0("stat_", args$stat), envir = pkg_envir)),
       silent = TRUE
     )
     if (!inherits(stat_args, "try-error")) {
       geom_args <- c(geom_args, stat_args)
     }
   }
+  # browser()
   if (isTRUE(add_aes)) {
     GeomFun <- paste0("Geom", capitalize(gsub("geom_", "", geom)))
     GeomFun <- try(get(GeomFun, envir = pkg_envir), silent = TRUE)
+    if (inherits(GeomFun, "try-error")) {
+      GeomFun <- try({
+        fun <- get(geom, envir = pkg_envir)
+        fun()$geom
+      }, silent = TRUE)
+    }
     if (inherits(GeomFun, "try-error") & !is.null(geom_args$geom)) {
       GeomFun <- paste0("Geom", capitalize(geom_args$geom))
       GeomFun <- try(get(GeomFun, envir = pkg_envir), silent = TRUE)
@@ -212,7 +253,11 @@ match_geom_args <- function(geom, args, add_aes = TRUE, mapping = list(), envir 
       geom_args <- c(geom_args, setNames(aes_args, aes_args))
     }
   }
-  args[names(args) %in% setdiff(names(geom_args), names(mapping))]
+  # browser()
+  args <- args[names(args) %in% setdiff(names(geom_args), exclude_args)]
+  if (isTRUE(add_mapping) & length(mapping) > 0)
+    args <- c(list(expr(aes(!!!syms2(mapping)))), args)
+  return(args)
 }
 
 
@@ -220,31 +265,41 @@ match_geom_args <- function(geom, args, add_aes = TRUE, mapping = list(), envir 
 
 
 # utils for geom icons
-geomIcons <- function() {
-  geoms <- c(
-    "auto", "line", "step", "path", "area", "bar", "col", "histogram",
-    "point", "jitter", "boxplot", "violin", "density",
-    "tile", "sf"
+geomIcons <- function(geoms = NULL, default = c("auto", "blank", "select")) {
+  default <- match.arg(default)
+  defaults <- c(
+    "line", "step", "path", "area", "ribbon",
+    "bar", "col",
+    "histogram", "density",
+    "point", "jitter", "smooth",
+    "boxplot", "violin",
+    "tile", "sf",
+    "text", "label"
   )
+  if (is.null(geoms))
+    geoms <- defaults
+  geoms <- match.arg(geoms, defaults, several.ok = TRUE)
+  geoms <- unique(c(default, geoms))
   href <- "esquisse/geomIcon/gg-%s.png"
   geomsChoices <- lapply(
     X = geoms,
     FUN = function(x) {
-      list(inputId = x, img = sprintf(fmt = href, x), label = capitalize(x))
+      list(inputId = x, img = sprintf(href, x), label = if (x != "select") capitalize(x))
     }
   )
-  
+
   geomsChoicesNames <- lapply(
     X = geomsChoices,
     FUN = function(x) {
       list(
         style = "width: 90px;",
         tags$img(src = x$img, width = 56, height = 56),
-        tags$br(), x$label
+        tags$br(),
+        x$label
       )
     }
   )
-  
+  geoms[!geoms %in% defaults] <- "blank"
   list(names = geomsChoicesNames, values = geoms)
 }
 

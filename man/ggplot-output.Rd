@@ -31,15 +31,17 @@ render_ggplot(
   ...,
   env = parent.frame(),
   quoted = FALSE,
-  filename = "export-ggplot"
+  filename = "export-ggplot",
+  resizable = FALSE,
+  use_plotly = reactive(FALSE),
+  width = reactive(NULL),
+  height = reactive(NULL)
 )
 }
 \arguments{
 \item{id}{Module ID.}
 
-\item{width}{Width of the plot.}
-
-\item{height}{Height of the plot.}
+\item{width, height}{Width / Height of the plot, in the server it has to be a \code{\link[shiny:reactive]{shiny::reactive()}} function returning a new width/height for the plot.}
 
 \item{downloads}{Labels for export options, use \code{downloads_labels()} or \code{NULL} to disable export options.}
 
@@ -61,6 +63,11 @@ is useful if you want to save an expression in a variable.}
 
 \item{filename}{A string of the filename to export WITHOUT extension,
 it will be added according to type of export.}
+
+\item{resizable}{Can the chart size be adjusted by the user?}
+
+\item{use_plotly}{A \code{\link[shiny:reactive]{shiny::reactive()}} function returning \code{TRUE} or \code{FALSE} to render
+the plot with \code{plotly::ggplotly()} or not.}
 }
 \value{
 Server-side, a \code{reactiveValues} with the plot.

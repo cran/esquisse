@@ -4,17 +4,20 @@
 \alias{esquisse-module}
 \alias{esquisse_ui}
 \alias{esquisse_server}
-\alias{esquisseContainer}
+\alias{esquisse_container}
+\alias{esquisse_header}
 \title{Esquisse module}
 \usage{
 esquisse_ui(
   id,
-  header = TRUE,
-  container = esquisseContainer(),
-  controls = c("labs", "parameters", "appearance", "filters", "code"),
+  header = esquisse_header(),
+  container = esquisse_container(),
+  controls = c("options", "labs", "axes", "geoms", "theme", "filters", "code"),
   insert_code = FALSE,
   play_pause = TRUE,
-  downloads = downloads_labels()
+  layout_sidebar = FALSE,
+  downloads = downloads_labels(),
+  n_geoms = 8
 )
 
 esquisse_server(
@@ -23,11 +26,25 @@ esquisse_server(
   name = "data",
   default_aes = c("fill", "color", "size", "group", "facet"),
   import_from = c("env", "file", "copypaste", "googlesheets", "url"),
+  n_geoms = 8,
   drop_ids = TRUE,
   notify_warnings = NULL
 )
 
-esquisseContainer(width = "100\%", height = "700px", fixed = FALSE)
+esquisse_container(width = "100\%", height = "700px", fixed = FALSE)
+
+esquisse_header(
+  import_data = TRUE,
+  show_data = TRUE,
+  update_variable = TRUE,
+  create_column = TRUE,
+  cut_variable = TRUE,
+  update_factor = TRUE,
+  settings = TRUE,
+  close = TRUE,
+  .before = NULL,
+  .after = NULL
+)
 }
 \arguments{
 \item{id}{Module ID.}
@@ -37,7 +54,7 @@ where names are : \code{settings}, \code{close}, \code{import} and \code{show_da
 \code{FALSE} to display or not the corresponding button.}
 
 \item{container}{Container in which display the addin,
-default is to use \code{esquisseContainer}, see examples.
+default is to use \code{\link[=esquisse_container]{esquisse_container()}}, see examples.
 Use \code{NULL} for no container (behavior in versions <= 0.2.1).
 Must be a \code{function}.}
 
@@ -48,7 +65,11 @@ code in the current user script (work only in RStudio).}
 
 \item{play_pause}{Display or not the play / pause button.}
 
+\item{layout_sidebar}{Put controls in a sidebar on the left rather than below the chart in dropdowns.}
+
 \item{downloads}{Export options available or \code{NULL} for no export. See \code{\link[=downloads_labels]{downloads_labels()}}.}
+
+\item{n_geoms}{Number of geoms the user can use.}
 
 \item{data_rv}{Either:
 \itemize{
@@ -77,6 +98,24 @@ or \code{"100\%"}; see \code{\link[htmltools]{validateCssUnit}}.}
 If \code{TRUE}, width and height are ignored. Default to \code{FALSE}.
 It's possible to use a vector of CSS unit of length 4 to specify the margins
 (top, right, bottom, left).}
+
+\item{import_data}{Show button to import data.}
+
+\item{show_data}{Show button to display data.}
+
+\item{update_variable}{Show button to update selected variables and convert them.}
+
+\item{create_column}{Show button to create a new column based on an expression.}
+
+\item{cut_variable}{Show button to allow to convert a numeric variable into factor.}
+
+\item{update_factor}{Show button to open window to reorder factor levels and update them.}
+
+\item{settings}{Show button to open settings modal (to select aesthetics to use).}
+
+\item{close}{Show button to stop the app and close addin.}
+
+\item{.before, .after}{Custom content to put in the header, typically buttons.}
 }
 \value{
 A \code{reactiveValues} with 3 slots :
@@ -97,35 +136,38 @@ library(shiny)
 library(esquisse)
 
 ui <- fluidPage(
+
+  theme = bs_theme_esquisse(),
+
   tags$h1("Use esquisse as a Shiny module"),
-  
+
   radioButtons(
-    inputId = "data", 
-    label = "Data to use:", 
+    inputId = "data",
+    label = "Data to use:",
     choices = c("iris", "mtcars"),
     inline = TRUE
   ),
   checkboxGroupInput(
-    inputId = "aes", 
-    label = "Aesthetics to use:", 
+    inputId = "aes",
+    label = "Aesthetics to use:",
     choices = c(
-      "fill", "color", "size", "shape", 
+      "fill", "color", "size", "shape",
       "weight", "group", "facet", "facet_row", "facet_col"
     ),
     selected = c("fill", "color", "size", "facet"),
     inline = TRUE
   ),
   esquisse_ui(
-    id = "esquisse", 
+    id = "esquisse",
     header = FALSE, # dont display gadget title
-    container = esquisseContainer(height = "700px")
+    container = esquisse_container(height = "700px")
   )
 )
 
 server <- function(input, output, session) {
-  
+
   data_rv <- reactiveValues(data = iris, name = "iris")
-  
+
   observeEvent(input$data, {
     if (input$data == "iris") {
       data_rv$data <- iris
@@ -135,13 +177,13 @@ server <- function(input, output, session) {
       data_rv$name <- "mtcars"
     }
   })
-  
+
   esquisse_server(
-    id = "esquisse", 
-    data_rv = data_rv, 
+    id = "esquisse",
+    data_rv = data_rv,
     default_aes = reactive(input$aes)
   )
-  
+
 }
 
 if (interactive())
@@ -162,11 +204,21 @@ my_data <- data.frame(
 
 
 ui <- fluidPage(
+  theme = bs_theme_esquisse(),
   esquisse_ui(
     id = "esquisse",
-    header = list(close = FALSE), # hide the close button
-    container = esquisseContainer(fixed = TRUE),
-    play_pause = FALSE
+    header = esquisse_header(
+      close = FALSE, # hide the close button
+      .after = actionButton( # custom button
+        inputId = "open_modal",
+        label = NULL,
+        icon = icon("plus")
+      )
+    ),
+    container = esquisse_container(fixed = TRUE),
+    play_pause = FALSE,
+    controls = c("settings", "labs", "axes", "geoms", "theme", "filters", "code", "export"),
+    layout_sidebar = TRUE
   )
 )
 
@@ -174,6 +226,10 @@ server <- function(input, output, session) {
 
   esquisse_server(id = "esquisse")
 
+
+  observeEvent(input$open_modal, {
+    showModal(modalDialog("Some content"))
+  })
 }
 
 if (interactive())
@@ -190,12 +246,13 @@ library(datamods)
 
 ui <- navbarPage(
   title = "My navbar app",
+  theme = bs_theme_esquisse(),
   tabPanel(
     title = "esquisse",
     esquisse_ui(
       id = "esquisse", 
       header = FALSE,
-      container = esquisseContainer(
+      container = esquisse_container(
         fixed = c(55, 0, 0, 0)
       )
     )

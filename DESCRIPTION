@@ -1,7 +1,7 @@
 Package: esquisse
 Type: Package
 Title: Explore and Visualize Your Data Interactively
-Version: 1.2.0
+Version: 2.0.0
 Authors@R: c(person("Fanny", "Meyer", role = c("aut")),
   person("Victor", "Perrier", email = "victor.perrier@dreamrs.fr", role = c("aut", "cre")),
   person("Ian", "Carroll", comment = "Faceting support", role = "ctb"),
@@ -17,16 +17,16 @@ URL: https://dreamrs.github.io/esquisse/,
 BugReports: https://github.com/dreamRs/esquisse/issues
 License: GPL-3 | file LICENSE
 Encoding: UTF-8
-RoxygenNote: 7.2.3
-Imports: bslib, datamods (>= 1.4.0), ggplot2 (>= 3.0.0), grDevices,
-        htmltools (>= 0.5.0), jsonlite, phosphoricons, rlang (>=
-        0.3.1), rstudioapi, scales, shiny (>= 1.1.0), shinybusy,
-        shinyWidgets (>= 0.6.0)
+RoxygenNote: 7.3.1
+Imports: bslib, datamods (>= 1.5.1), downlit, ggplot2 (>= 3.0.0),
+        grDevices, htmltools (>= 0.5.0), jsonlite, phosphoricons (>=
+        0.2.1), rlang (>= 0.3.1), rstudioapi, scales, shiny (>= 1.1.0),
+        shinybusy, shinyWidgets (>= 0.6.0)
 Suggests: officer, rvg, rio, testthat (>= 2.1.0), knitr, rmarkdown,
-        ggthemes, hrbrthemes
+        ggthemes, hrbrthemes, plotly
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2024-01-10 14:55:46 UTC; victorp
+Packaged: 2024-05-25 15:41:31 UTC; victor
 Author: Fanny Meyer [aut],
   Victor Perrier [aut, cre],
   Ian Carroll [ctb] (Faceting support),
@@ -36,4 +36,4 @@ Author: Fanny Meyer [aut],
   Zeno Rocha [cph] (author of clipboard JavaScript library)
 Maintainer: Victor Perrier <victor.perrier@dreamrs.fr>
 Repository: CRAN
-Date/Publication: 2024-01-10 15:23:03 UTC
+Date/Publication: 2024-05-25 16:10:02 UTC

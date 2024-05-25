@@ -16,16 +16,16 @@ select_aes_server <- function(id,
   moduleServer(
     id,
     function(input, output, session) {
-      
+
       ns <- session$ns
       res_rv <- reactiveValues(aes = list())
-      
+
       # Generate drag-and-drop input
       output$ui_aesthetics <- renderUI({
         if (is.reactive(default_aes)) {
           aesthetics <- default_aes()
         } else {
-          if (is.null(input_aes())) {
+          if (length(input_aes()) < 1) {
             aesthetics <- default_aes
           } else {
             aesthetics <- input_aes()
@@ -45,21 +45,54 @@ select_aes_server <- function(id,
           choiceNames <- ""
           selected <- NULL
         }
-        dragulaInput(
-          inputId = ns("dragvars"),
-          sourceLabel = "Variables",
-          targetsLabels = c("X", "Y", aesthetics),
-          targetsIds = c("xvar", "yvar", aesthetics),
-          choiceValues = choiceValues,
-          choiceNames = choiceNames,
-          selected = selected,
-          badge = FALSE,
-          width = "100%",
-          height = "70px",
-          replace = TRUE
-        )
+        if ("facet" %in% aesthetics) {
+          tagList(
+            tags$style(
+              HTML(sprintf(
+                "#%s-target-6661636574 {grid-area: 1 / %s / 3 / %s; height: auto !important;}",
+                ns("dragvars"), length(aesthetics) + 2, length(aesthetics) + 2 + 1
+              )),
+              HTML(sprintf(
+                "#%s-source-container { grid-area: 1 / 1 / 2 / %s; }",
+                ns("dragvars"), length(aesthetics) + 2
+              ))
+            ),
+            dragulaInput(
+              inputId = ns("dragvars"),
+              sourceLabel = "Variables",
+              targetsLabels = c("X", "Y", aesthetics),
+              targetsIds = c("xvar", "yvar", aesthetics),
+              choiceValues = choiceValues,
+              choiceNames = choiceNames,
+              selected = selected,
+              badge = FALSE,
+              ncolGrid = length(aesthetics) + 2,
+              nrowGrid = 2,
+              ncolSource = NULL,
+              width = "100%",
+              height = "70px",
+              targetsHeight = "50px",
+              replace = TRUE
+            )
+          )
+        } else {
+          dragulaInput(
+            inputId = ns("dragvars"),
+            sourceLabel = "Variables",
+            targetsLabels = c("X", "Y", aesthetics),
+            targetsIds = c("xvar", "yvar", aesthetics),
+            choiceValues = choiceValues,
+            choiceNames = choiceNames,
+            selected = selected,
+            badge = FALSE,
+            width = "100%",
+            height = "70px",
+            targetsHeight = "50px",
+            replace = TRUE
+          )
+        }
       })
-      
+
       # Update drag-and-drop input when data changes
       observeEvent(data_r(), {
         data <- data_r()
@@ -73,24 +106,44 @@ select_aes_server <- function(id,
           )
         } else {
           var_choices <- get_col_names(data)
+          var_badges <- badgeType(
+            col_name = var_choices,
+            col_type = col_type(data[, var_choices, drop = TRUE])
+          )
+          selected <- dropNulls(isolate(input$dragvars$target))
+          var_selected <- unlist(selected, use.names = FALSE)
+          if (!all(var_selected %in% var_choices))
+            var_selected <- NULL
           updateDragulaInput(
             session = session,
             inputId = "dragvars",
             status = NULL,
             choiceValues = var_choices,
-            choiceNames = badgeType(
-              col_name = var_choices,
-              col_type = col_type(data[, var_choices, drop = TRUE])
+            choiceNames = var_badges,
+            # selected = shiny::isolate(input$dragvars$target),
+            selectedNames = if (length(var_selected) > 0) lapply(
+              X = selected,
+              function(x) {
+                var_badges[var_choices == x]
+              }
             ),
+            selectedValues = if (length(var_selected) > 0) selected,
             badge = FALSE
           )
         }
       }, ignoreNULL = FALSE)
-      
+
       observeEvent(input$dragvars$target, {
-        res_rv$aes <- input$dragvars$target
+        res_rv$aes <- lapply(
+          X = input$dragvars$target,
+          FUN = function(x) {
+            if (!is.null(x))
+              return(as.character(x))
+            x
+          }
+        )
       })
-      
+
       return(reactive(res_rv$aes))
     }
   )

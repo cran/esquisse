@@ -104,6 +104,22 @@ dev.off()
 
 
 
+
+
+# Geom ribbon -------------------------------------------------------------
+
+png(filename = "inst/geomIcon/www/gg-ribbon.png", bg = "transparent")
+ggplot(data = coord_circle(centre = c(0, 0), r = 1)) + geom_polygon(aes(x = x, y = y), fill = "#4b668f") + coord_fixed() + theme_void()
+p <- ggplot(data.frame(year = 1875:1972, level = as.vector(LakeHuron)), aes(year, y = level))+
+  geom_ribbon(aes(ymin = level - 1, ymax = level + 1), fill = "#ECEFF4") +
+  theme_void()
+print(p, vp = viewport(width = unit(0.6, "npc"), height = unit(0.6, "npc")))
+dev.off()
+
+
+
+
+
 # Geom path ---------------------------------------------------------------
 
 png(filename = "inst/geomIcon/www/gg-path.png", bg = "transparent")
@@ -153,8 +169,9 @@ ggplot(data = iris) + geom_histogram(mapping = aes(x = Sepal.Length), bins = 20)
 png(filename = "inst/geomIcon/www/gg-point.png", bg = "transparent")
 ggplot(data = coord_circle(centre = c(0, 0), r = 1)) + geom_polygon(aes(x = x, y = y), fill = "#02C39A") + coord_fixed() + theme_void()
 # p <- ggplot(data = mtcars) + geom_point(mapping = aes(wt, mpg), size = 10, color = "white") + theme_void()
-p <- qplot(x = 1:10, y = 1:10, size = I(10), color = I("white")) + theme_void()
-print(p, vp = viewport(width = unit(0.6, "npc"), height = unit(0.6, "npc")))
+# p <- ggplot() + geom_point(aes(x = 1:10, y = 1:10), size = 10, color = "white") + theme_void()
+p <- ggplot(mtcars, aes(wt, mpg)) + geom_point(size = 10, color = "white") + theme_void()
+print(p, vp = viewport(width = unit(0.5, "npc"), height = unit(0.5, "npc")))
 dev.off()
 
 
@@ -164,9 +181,43 @@ dev.off()
 png(filename = "inst/geomIcon/www/gg-jitter.png", bg = "transparent")
 ggplot(data = coord_circle(centre = c(0, 0), r = 1)) + geom_polygon(aes(x = x, y = y), fill = "#36D2A9") + coord_fixed() + theme_void()
 # p <- ggplot(data = mtcars) + geom_point(mapping = aes(wt, mpg), size = 10, color = "white") + theme_void()
-p <- qplot(x = 1:10, y = 1:10, size = I(10), color = I("white"), geom = "jitter", width = I(1), height = I(1)) + theme_void()
+p <- ggplot() + geom_jitter(aes(x = 1:10, y = 1:10), size = 10, color = "white", width = 1, height = 1) + theme_void()
 print(p, vp = viewport(width = unit(0.6, "npc"), height = unit(0.6, "npc")))
 dev.off()
+
+
+
+# Geom smooth -------------------------------------------------------------
+
+png(filename = "inst/geomIcon/www/gg-smooth.png", bg = "transparent")
+ggplot(data = coord_circle(centre = c(0, 0), r = 1)) + geom_polygon(aes(x = x, y = y), fill = "#04a8a8") + coord_fixed() + theme_void()
+p <- ggplot(data = mpg) +
+  aes(displ, hwy) +
+  geom_point(color = "#FFFFFF", size = 2) +
+  geom_smooth(color = "#FFFFFF", fill = "#FBFAFB", linewidth = 1.4, span = 0.75, level = 0.9999, fullrange = TRUE) +
+  theme_void()
+print(p, vp = viewport(width = unit(0.8, "npc"), height = unit(0.8, "npc")))
+dev.off()
+
+
+# library(sf)
+# png(filename = "inst/geomIcon/www/gg-smooth.png", bg = "transparent")
+# ggplot(data = coord_circle(centre = c(0, 0), r = 1)) + geom_polygon(aes(x = x, y = y), fill = "#04a8a8") + coord_fixed() + theme_void()
+# p <- ggplot(data = mpg) +
+#   aes(displ, hwy) +
+#   geom_point(color = "#FFFFFF", size = 2) +
+#   geom_smooth(color = "#FFFFFF", fill = "#FBFAFB", linewidth = 1.4, span = 0.75, level = 0.9999, fullrange = TRUE) +
+#   theme_void()
+# print(p, vp = viewport(width = unit(0.8, "npc"), height = unit(0.8, "npc")))
+# p2 <- ggplot(
+#   st_difference(
+#     st_as_sfc(st_bbox(st_polygon(list(as.matrix(coord_circle(centre = c(0, 0), r = 1)))))),
+#     st_polygon(list(as.matrix(coord_circle(centre = c(0, 0), r = 1))))
+#   ), col = "#FFFFFF"
+# ) + geom_sf(fill = "#FFFFFF", color = "#FFFFFF") + theme_void()
+# print(p2, vp = viewport(width = unit(1, "npc"), height = unit(1, "npc")))
+# dev.off()
+
 
 
 
@@ -202,6 +253,35 @@ p <- ggplot() + geom_text(mapping = aes(x = 0, y = 0, label = "auto"), color = "
 print(p, vp = viewport(width = unit(0.6, "npc"), height = unit(0.6, "npc")))
 dev.off()
 
+
+
+
+
+# Geom blank --------------------------------------------------------------
+
+png(filename = "inst/geomIcon/www/gg-blank.png", bg = "transparent")
+ggplot() +
+  geom_polygon(data = coord_circle(centre = c(0, 0), r = 1), aes(x = x, y = y), fill = "#FFFFFF", color = "#000000") +
+  coord_fixed() +
+  geom_text(mapping = aes(x = 0, y = 0, label = "blank"), color = "#000000", size = 50) +
+  theme_void()
+# p <- ggplot() + geom_text(mapping = aes(x = 0, y = 0, label = "blank"), color = "#000000", size = 50) + theme_void()
+# print(p, vp = viewport(width = unit(0.6, "npc"), height = unit(0.6, "npc")))
+dev.off()
+
+
+
+# Geom select --------------------------------------------------------------
+
+png(filename = "inst/geomIcon/www/gg-select.png", bg = "transparent")
+ggplot() +
+  geom_polygon(data = coord_circle(centre = c(0, 0), r = 1), aes(x = x, y = y), fill = "#FFFFFF", color = "#FFFFFF") +
+  coord_fixed() +
+  geom_text(mapping = aes(x = 0, y = 0, label = "select\ngeom"), color = "#000000", size = 46) +
+  theme_void()
+# p <- ggplot() + geom_text(mapping = aes(x = 0, y = 0, label = "blank"), color = "#000000", size = 50) + theme_void()
+# print(p, vp = viewport(width = unit(0.6, "npc"), height = unit(0.6, "npc")))
+dev.off()
 
 
 
@@ -272,3 +352,28 @@ dev.off()
 
 
 
+# Geom text ---------------------------------------------------------------
+
+png(filename = "inst/geomIcon/www/gg-text.png", bg = "transparent")
+ggplot(data = coord_circle(centre = c(0, 0), r = 1)) + geom_polygon(aes(x = x, y = y), fill = "#CD2EFB") + coord_fixed() + theme_void()
+p <- ggplot(mtcars, aes(wt, mpg, label = rownames(mtcars))) +
+  geom_text(color = "white", size = 9) +
+  xlim(0, 8) +
+  ylim(7, 40) +
+  theme_void()
+print(p, vp = viewport(width = unit(0.8, "npc"), height = unit(0.8, "npc")))
+dev.off()
+
+
+
+# Geom label --------------------------------------------------------------
+
+png(filename = "inst/geomIcon/www/gg-label.png", bg = "transparent")
+ggplot(data = coord_circle(centre = c(0, 0), r = 1)) + geom_polygon(aes(x = x, y = y), fill = "#AC59FB") + coord_fixed() + theme_void()
+p <- ggplot(mtcars, aes(wt, mpg, label = rownames(mtcars))) +
+  geom_label(color = "black", size = 9) +
+  xlim(0, 8) +
+  ylim(7, 40) +
+  theme_void()
+print(p, vp = viewport(width = unit(0.8, "npc"), height = unit(0.8, "npc")))
+dev.off()

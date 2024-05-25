@@ -43,7 +43,7 @@
 #'
 #' }
 esquisser <- function(data = NULL,
-                      controls = c("labs", "parameters", "appearance", "filters", "code"),
+                      controls = c("options", "labs", "axes", "geoms", "theme", "filters", "code"),
                       viewer = getOption(x = "esquisse.viewer", default = "dialog")) {
   viewer <- match.arg(viewer, choices = c("dialog", "pane", "browser"))
 
@@ -61,12 +61,21 @@ esquisser <- function(data = NULL,
   } else if (viewer == "pane") {
     inviewer <- paneViewer(minHeight = "maximize")
   } else {
+    # v0.1.6 "Dessine-moi un mouton..."
+    # v0.2.0
+    # v0.3.1 "C'est le temps que tu as perdu pour ta rose qui rend ta rose importante.",
+    # v1.0.0
+    # v1.1.1  "Les grandes personnes ne comprennent jamais rien toutes seules, et c'est fatigant,",
+    #         "pour les enfants, de toujours et toujours leur donner des explications."
+    # v1.1.2 "Le petit prince, qui me posait beaucoup de questions, ne semblait jamais entendre les miennes."
+    # v1.2.0 "Les \u00e9toiles sont \u00e9clair\u00e9es pour que chacun puisse un jour retrouver la sienne."
     inviewer <- dialogViewer(
       paste(
-        "Les \u00e9toiles sont \u00e9clair\u00e9es pour que chacun puisse un jour retrouver la sienne."
+        "\u2014 Quand tu regarderas le ciel, la nuit, puisque j'habiterai dans l'une d'elles,",
+        "puisque je rirai dans l'une d'elles, alors ce sera pour toi comme si riaient toutes les \u00e9toiles."
       ),
-      width = 1100,
-      height = 750
+      width = 1200,
+      height = 800
     )
   }
 
@@ -95,6 +104,12 @@ esquisser <- function(data = NULL,
 }
 
 
+
+#' Bootstrap Theme for Esquisse
+#'
+#' @return A [bslib::bs_theme()].
+#' @export
+#'
 #' @importFrom bslib bs_theme bs_add_rules
 bs_theme_esquisse <- function() {
   theme <- bslib::bs_theme(
@@ -102,14 +117,21 @@ bs_theme_esquisse <- function() {
     primary = "#112446",
     secondary = "#cccccc",
     preset = "bootstrap",
-    font_scale = 0.8
+    font_scale = 0.8,
+    "accordion-body-padding-y" = "5px",
+    "accordion-body-padding-x" = "5px"
   )
-  bslib::bs_add_rules(
+  theme <- bslib::bs_add_rules(
     theme = theme,
     c(
       ".modal-title { @extend .mt-0 }",
-      "#NotiflixNotifyWrap { inset: auto 5px 38px auto !important; }"
+      ".sidebar-title { @extend .mb-0 }",
+      "#NotiflixNotifyWrap { inset: auto 5px 38px auto !important; }",
+      ".nav-tabs .nav-link.active { @extend .border-0; @extend .border-bottom; @extend .border-primary; @extend .border-2;}",
+      ".nav-tabs .nav-link.active { @extend .text-primary; @extend .fw-bold}",
+      ".esquisse-geom-aes-main .nav-pills .nav-link { @extend .py-1 }"
     )
   )
+  return(theme)
 }
 
