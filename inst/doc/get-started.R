@@ -6,23 +6,23 @@ knitr::opts_chunk$set(
 )
 
 ## ----setup--------------------------------------------------------------------
-#  library(esquisse)
+# library(esquisse)
 
 ## -----------------------------------------------------------------------------
-#  esquisser()
+# esquisser()
 
 ## -----------------------------------------------------------------------------
-#  esquisser(mtcars)
+# esquisser(mtcars)
 
 ## -----------------------------------------------------------------------------
-#  esquisser(viewer = "browser")
-#  esquisser(viewer = "pane")
+# esquisser(viewer = "browser")
+# esquisser(viewer = "pane")
 
 ## -----------------------------------------------------------------------------
-#  options("esquisse.viewer" = "browser")
+# options("esquisse.viewer" = "browser")
 
 ## -----------------------------------------------------------------------------
-#  library(esquisse)
-#  set_i18n("fr")
-#  esquisser()
+# library(esquisse)
+# set_i18n("fr")
+# esquisser()
 
